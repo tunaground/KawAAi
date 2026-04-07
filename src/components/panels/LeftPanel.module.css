@@ -13,12 +13,24 @@
   flex-direction: column;
   border-bottom: 1px solid var(--border);
   min-height: 0;
-}
-.section:not(.collapsed) {
-  flex: 1;
+  overflow: hidden;
+  flex-shrink: 0;
 }
 .collapsed .sectionBody {
   display: none;
+}
+
+
+.sectionResize {
+  height: 4px;
+  cursor: ns-resize;
+  background: transparent;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.sectionResize:hover {
+  background: var(--accent);
+  opacity: 0.4;
 }
 
 .sectionHeader {
@@ -90,6 +102,13 @@
 .layerHeaderBtn:hover {
   background: var(--bg-tertiary);
   color: var(--text-primary);
+}
+
+.bottomBlock {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
 }
 
 .sectionBody {

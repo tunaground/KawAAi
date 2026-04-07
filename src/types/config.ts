@@ -26,6 +26,7 @@ export interface AppConfig {
   windowLayout: WindowLayout | null;
   panelLayout: PanelLayout | null;
   sectionsCollapsed: { layers: boolean; palette: boolean; library: boolean } | null;
+  sectionHeights: { layers: number; palette: number; library: number } | null;
   activePaletteIndex: number;
   mltFileIndex: number;
   mltSectionIndex: number;
@@ -43,6 +44,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   windowLayout: null,
   panelLayout: null,
   sectionsCollapsed: null,
+  sectionHeights: null,
   activePaletteIndex: 0,
   mltFileIndex: 0,
   mltSectionIndex: 0,
