@@ -84,6 +84,7 @@ export const ko = {
   "settings.themeSystem": "시스템",
   "settings.themeLight": "라이트",
   "settings.themeDark": "다크",
+  "settings.autoSave": "자동 저장",
   "settings.mltDir": "MLT 디렉토리",
 
   // Status

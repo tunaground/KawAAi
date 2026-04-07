@@ -23,10 +23,11 @@ import {
   saveConfig,
 } from "./lib/fileIO";
 import type { ProjectFile } from "./types/project";
-import { setStatus } from "./stores/statusStore";
+import { setStatus, setProjectPath, markSaved } from "./stores/statusStore";
 import { mergeSelectedLayers } from "./lib/layerOps";
 import { usePaletteStore } from "./stores/paletteStore";
 import { useMltStore } from "./stores/mltStore";
+import { useAutoSave } from "./hooks/useAutoSave";
 
 // 현재 열려 있는 프로젝트 파일 경로
 let currentProjectPath: string | null = null;
@@ -41,6 +42,7 @@ function App() {
 
   useDragHandler();
   useKeyboardShortcuts();
+  useAutoSave();
 
   // ── 저장 ──
   const handleSave = useCallback(async () => {
@@ -51,7 +53,7 @@ function App() {
       try {
         await saveProjectToPath(currentProjectPath, proj);
         await saveRecentProject(currentProjectPath);
-        setStatus(`저장됨: ${currentProjectPath}`);
+        setStatus(`저장됨: ${currentProjectPath}`); markSaved(); setProjectPath(currentProjectPath);
       } catch {
         downloadJson(proj, `${proj.name}.aaproj`);
       }
@@ -62,6 +64,8 @@ function App() {
           currentProjectPath = path;
           await saveRecentProject(path);
           setStatus(`저장됨: ${path}`);
+          markSaved();
+          setProjectPath(path);
         }
       } catch {
         downloadJson(proj, `${proj.name}.aaproj`);
@@ -80,6 +84,8 @@ function App() {
         currentProjectPath = path;
         await saveRecentProject(path);
         setStatus(`저장됨: ${path}`);
+        markSaved();
+        setProjectPath(path);
       }
     } catch {
       downloadJson(proj, `${proj.name}.aaproj`);
@@ -103,6 +109,7 @@ function App() {
       });
       useProjectStore.getState().restoreDocState();
       setStatus(`불러옴: ${result.path}`);
+      setProjectPath(result.path);
     } catch {
       // Tauri 미사용 환경: file input 폴백
       const input = document.createElement("input");
@@ -276,6 +283,7 @@ async function tryRestoreLastProject(): Promise<boolean> {
     if (!data || !data.documents || data.documents.length === 0) return false;
 
     currentProjectPath = path;
+    setProjectPath(path);
     useProjectStore.setState({
       project: data,
       layers: [],

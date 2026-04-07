@@ -75,6 +75,7 @@ export const ja = {
   "settings.themeSystem": "システム",
   "settings.themeLight": "ライト",
   "settings.themeDark": "ダーク",
+  "settings.autoSave": "自動保存",
   "settings.mltDir": "MLTディレクトリ",
 
   "status.ready": "準備完了",

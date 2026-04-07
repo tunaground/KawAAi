@@ -75,6 +75,7 @@ export const en = {
   "settings.themeSystem": "System",
   "settings.themeLight": "Light",
   "settings.themeDark": "Dark",
+  "settings.autoSave": "Auto Save",
   "settings.mltDir": "MLT Directory",
 
   "status.ready": "Ready",

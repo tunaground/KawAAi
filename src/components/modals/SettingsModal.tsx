@@ -1,11 +1,21 @@
 import { useI18n } from "../../i18n";
 import { useConfigStore } from "../../stores/configStore";
+import type { AutoSaveInterval } from "../../types/config";
 import styles from "./SettingsModal.module.css";
 
 interface SettingsModalProps {
   open: boolean;
   onClose: () => void;
 }
+
+const AUTO_SAVE_OPTIONS: { value: AutoSaveInterval; label: string }[] = [
+  { value: 0, label: "안함" },
+  { value: 30, label: "30초" },
+  { value: 60, label: "1분" },
+  { value: 180, label: "3분" },
+  { value: 300, label: "5분" },
+  { value: 600, label: "10분" },
+];
 
 export function SettingsModal({ open, onClose }: SettingsModalProps) {
   const t = useI18n((s) => s.t);
@@ -14,6 +24,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
   const config = useConfigStore((s) => s.config);
   const setTheme = useConfigStore((s) => s.setTheme);
   const setConfigLocale = useConfigStore((s) => s.setLocale);
+  const setAutoSaveInterval = useConfigStore((s) => s.setAutoSaveInterval);
 
   if (!open) return null;
 
@@ -51,6 +62,23 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
             <option value="system">{t("settings.themeSystem")}</option>
             <option value="light">{t("settings.themeLight")}</option>
             <option value="dark">{t("settings.themeDark")}</option>
+          </select>
+        </div>
+
+        <div className={styles.row}>
+          <label className={styles.label}>자동 저장</label>
+          <select
+            className={styles.select}
+            value={config.autoSaveInterval}
+            onChange={(e) =>
+              setAutoSaveInterval(Number(e.target.value) as AutoSaveInterval)
+            }
+          >
+            {AUTO_SAVE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
           </select>
         </div>
 

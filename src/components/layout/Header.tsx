@@ -4,6 +4,7 @@ import {
 } from "lucide-react";
 import { useProjectStore } from "../../stores/projectStore";
 import { useEditorStore, type EditorMode } from "../../stores/editorStore";
+import { useStatusStore } from "../../stores/statusStore";
 import { useI18n } from "../../i18n";
 import styles from "./Header.module.css";
 
@@ -22,6 +23,8 @@ export function Header({ onOpenQuickEdit, onOpenSettings, onSave, onSaveAs: _onS
   const t = useI18n((s) => s.t);
   const editorMode = useEditorStore((s) => s.editorMode);
   const setEditorMode = useEditorStore((s) => s.setEditorMode);
+  const projectPath = useStatusStore((s) => s.projectPath);
+  const lastSavedAt = useStatusStore((s) => s.lastSavedAt);
 
   const toggleMode = (mode: EditorMode) => {
     setEditorMode(editorMode === mode ? "normal" : mode);
@@ -107,6 +110,17 @@ export function Header({ onOpenQuickEdit, onOpenSettings, onSave, onSaveAs: _onS
         <button className={styles.btn} onClick={onOpenSettings} title={t("settings.title")}>
           <Settings size={16} />
         </button>
+      </div>
+
+      <div className={styles.fileInfo}>
+        <span className={styles.filePath}>
+          {projectPath
+            ? projectPath.split("/").pop()?.split("\\").pop()
+            : "새 프로젝트"}
+        </span>
+        {lastSavedAt && (
+          <span className={styles.savedAt}>저장: {lastSavedAt}</span>
+        )}
       </div>
     </header>
   );

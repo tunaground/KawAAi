@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { AppConfig } from "../types/config";
+import type { AppConfig, AutoSaveInterval } from "../types/config";
 import { DEFAULT_CONFIG } from "../types/config";
 
 const STORAGE_KEY = "kawaii_config";
@@ -38,6 +38,7 @@ interface ConfigState {
   setTheme: (mode: ThemeMode) => void;
   setLocale: (locale: AppConfig["locale"]) => void;
   setPreviewMode: (mode: AppConfig["previewMode"]) => void;
+  setAutoSaveInterval: (interval: AutoSaveInterval) => void;
   updateConfig: (updates: Partial<AppConfig>) => void;
 }
 
@@ -100,6 +101,12 @@ export const useConfigStore = create<ConfigState>((set, get) => {
 
     setPreviewMode: (mode) => {
       const config = { ...get().config, previewMode: mode };
+      set({ config });
+      persistConfig(config);
+    },
+
+    setAutoSaveInterval: (interval) => {
+      const config = { ...get().config, autoSaveInterval: interval };
       set({ config });
       persistConfig(config);
     },
