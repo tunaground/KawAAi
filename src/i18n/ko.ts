@@ -96,4 +96,12 @@ export const ko = {
   "status.cannotRedo": "다시 실행할 수 없음",
   "status.undo": "되돌리기",
   "status.redo": "다시 실행",
+  "status.docClosed": "문서 닫힘",
+  "status.projectDownloaded": "프로젝트 다운로드됨",
+  "status.textDownloaded": "텍스트 다운로드됨",
+  "status.detachedOpen": "별도 창 열림",
+  "status.detachedClosed": "별도 창 닫힘 → 우측 복귀",
+  "status.detachedNotSupported": "별도 창은 Tauri 환경에서만 지원됩니다",
+  "status.lastPalette": "마지막 팔레트는 삭제할 수 없습니다",
+  "status.docPasted": "문서 붙여넣기됨",
 };

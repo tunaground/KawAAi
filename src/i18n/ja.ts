@@ -86,4 +86,12 @@ export const ja = {
   "status.cannotRedo": "やり直しできません",
   "status.undo": "元に戻す",
   "status.redo": "やり直し",
+  "status.docClosed": "ドキュメントを閉じました",
+  "status.projectDownloaded": "プロジェクトダウンロード済み",
+  "status.textDownloaded": "テキストダウンロード済み",
+  "status.detachedOpen": "別ウィンドウ表示",
+  "status.detachedClosed": "別ウィンドウ閉じ → 右側に復帰",
+  "status.detachedNotSupported": "別ウィンドウはTauri環境のみ対応",
+  "status.lastPalette": "最後のパレットは削除できません",
+  "status.docPasted": "ドキュメント貼り付け済み",
 };

@@ -1,6 +1,6 @@
 import {
   FolderOpen, Save, Merge, PenTool, Magnet,
-  Grid3x3, LetterText, Settings, Paintbrush, Eraser, X,
+  Grid3x3, LetterText, Settings, Paintbrush, Eraser, X, BookOpen,
 } from "lucide-react";
 import { useProjectStore } from "../../stores/projectStore";
 import { useEditorStore, type EditorMode } from "../../stores/editorStore";
@@ -15,9 +15,10 @@ interface HeaderProps {
   onSaveAs: () => void;
   onOpen: () => void;
   onMerge: () => void;
+  onOpenManual: () => void;
 }
 
-export function Header({ onOpenQuickEdit, onOpenSettings, onSave, onSaveAs: _onSaveAs, onOpen, onMerge }: HeaderProps) {
+export function Header({ onOpenQuickEdit, onOpenSettings, onSave, onSaveAs: _onSaveAs, onOpen, onMerge, onOpenManual }: HeaderProps) {
   const viewSettings = useProjectStore((s) => s.viewSettings);
   const setViewSetting = useProjectStore((s) => s.setViewSetting);
   const t = useI18n((s) => s.t);
@@ -107,6 +108,9 @@ export function Header({ onOpenQuickEdit, onOpenSettings, onSave, onSaveAs: _onS
 
         <div className={styles.separator} />
 
+        <button className={styles.btn} onClick={onOpenManual} title="매뉴얼">
+          <BookOpen size={16} />
+        </button>
         <button className={styles.btn} onClick={onOpenSettings} title={t("settings.title")}>
           <Settings size={16} />
         </button>

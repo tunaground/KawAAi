@@ -86,4 +86,12 @@ export const en = {
   "status.cannotRedo": "Nothing to redo",
   "status.undo": "Undo",
   "status.redo": "Redo",
+  "status.docClosed": "Document closed",
+  "status.projectDownloaded": "Project downloaded",
+  "status.textDownloaded": "Text downloaded",
+  "status.detachedOpen": "Detached window opened",
+  "status.detachedClosed": "Detached window closed → right panel",
+  "status.detachedNotSupported": "Detached window requires Tauri",
+  "status.lastPalette": "Cannot delete last palette",
+  "status.docPasted": "Document pasted",
 };

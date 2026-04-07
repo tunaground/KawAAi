@@ -9,12 +9,13 @@ import { Canvas } from "./components/canvas/Canvas";
 import { InputModal } from "./components/modals/InputModal";
 import { QuickEditModal } from "./components/modals/QuickEditModal";
 import { SettingsModal } from "./components/modals/SettingsModal";
+import { ManualModal } from "./components/modals/ManualModal";
 import { useProjectStore } from "./stores/projectStore";
 import { initSpaceWidths } from "./lib/compositor";
 import { useDragHandler } from "./hooks/useDragHandler";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useConfigStore } from "./stores/configStore";
-import { useI18n } from "./i18n";
+import { useI18n, t } from "./i18n";
 import {
   saveProjectDialog,
   saveProjectToPath,
@@ -36,6 +37,7 @@ function App() {
   const project = useProjectStore((s) => s.project);
   const [quickEditOpen, setQuickEditOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
   const leftPanelRef = useRef<HTMLDivElement>(null);
   const previewPanelRef = useRef<HTMLDivElement>(null);
   const previewMode = useConfigStore((s) => s.config.previewMode);
@@ -69,7 +71,7 @@ function App() {
         }
       } catch {
         downloadJson(proj, `${proj.name}.aaproj`);
-        setStatus("프로젝트 다운로드됨");
+        setStatus(t("status.projectDownloaded"));
       }
     }
   }, []);
@@ -150,6 +152,25 @@ function App() {
         e.preventDefault();
         handleOpen();
       }
+      if (mod && e.key === "w") {
+        e.preventDefault();
+        const store = useProjectStore.getState();
+        if (store.project.documents.length > 1) {
+          store.closeDocument(store.project.activeDocId);
+          setStatus(t("status.docClosed"));
+        }
+      }
+      if (mod && e.key === "n") {
+        e.preventDefault();
+        const store = useProjectStore.getState();
+        store.saveCurrentDocState();
+        const doc = store.createDocument();
+        useProjectStore.setState({
+          project: { ...useProjectStore.getState().project, activeDocId: doc.id },
+        });
+        store.restoreDocState();
+        setStatus(`새 문서: ${doc.name}`);
+      }
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
@@ -208,6 +229,7 @@ function App() {
         onSaveAs={handleSaveAs}
         onOpen={handleOpen}
         onMerge={mergeSelectedLayers}
+        onOpenManual={() => setManualOpen(true)}
       />
       <TabBar />
       {previewMode === "bottom" ? (
@@ -240,6 +262,10 @@ function App() {
       <SettingsModal
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+      />
+      <ManualModal
+        open={manualOpen}
+        onClose={() => setManualOpen(false)}
       />
     </>
   );

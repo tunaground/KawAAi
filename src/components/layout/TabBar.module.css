@@ -56,3 +56,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.tabNameInput {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  padding: 0 4px;
+  font-size: 0.8rem;
+  outline: none;
+  width: 80px;
+}

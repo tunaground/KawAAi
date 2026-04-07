@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Plus, X } from "lucide-react";
 import { useProjectStore } from "../../stores/projectStore";
 import { useEditorStore } from "../../stores/editorStore";
@@ -11,6 +11,9 @@ export function TabBar() {
   const createDocument = useProjectStore((s) => s.createDocument);
   const saveCurrentDocState = useProjectStore((s) => s.saveCurrentDocState);
   const restoreDocState = useProjectStore((s) => s.restoreDocState);
+  const renameDocument = useProjectStore((s) => s.renameDocument);
+  const [editingDocId, setEditingDocId] = useState<number | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const handleAdd = () => {
     saveCurrentDocState();
@@ -42,7 +45,34 @@ export function TabBar() {
             if (doc.id !== project.activeDocId) switchDocument(doc.id);
           }}
         >
-          <span className={styles.tabName}>{doc.name}</span>
+          {editingDocId === doc.id ? (
+            <input
+              ref={inputRef}
+              className={styles.tabNameInput}
+              defaultValue={doc.name}
+              autoFocus
+              onBlur={(e) => {
+                const val = e.target.value.trim();
+                if (val) renameDocument(doc.id, val);
+                setEditingDocId(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { (e.target as HTMLInputElement).blur(); }
+                if (e.key === "Escape") { setEditingDocId(null); }
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <span
+              className={styles.tabName}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                setEditingDocId(doc.id);
+              }}
+            >
+              {doc.name}
+            </span>
+          )}
           {project.documents.length > 1 && (
             <span
               className={styles.tabClose}

@@ -2,6 +2,7 @@ import { useEffect, useCallback } from "react";
 import { useProjectStore } from "../stores/projectStore";
 import { useEditorStore } from "../stores/editorStore";
 import { setStatus } from "../stores/statusStore";
+import { t } from "../i18n";
 import type { LayerClipboard } from "../types/editor";
 
 /**
@@ -114,19 +115,19 @@ function restoreSnapshot(snap: ReturnType<typeof captureSnapshot>) {
 function undo() {
   const editor = useEditorStore.getState();
   const snap = editor.popUndo();
-  if (!snap) { setStatus("되돌릴 수 없음"); return; }
+  if (!snap) { setStatus(t("status.cannotUndo")); return; }
   editor.pushRedo(captureSnapshot());
   restoreSnapshot(snap);
-  setStatus("되돌리기");
+  setStatus(t("status.undo"));
 }
 
 function redo() {
   const editor = useEditorStore.getState();
   const snap = editor.popRedo();
-  if (!snap) { setStatus("다시 실행할 수 없음"); return; }
+  if (!snap) { setStatus(t("status.cannotRedo")); return; }
   editor.pushUndo(captureSnapshot());
   restoreSnapshot(snap);
-  setStatus("다시 실행");
+  setStatus(t("status.redo"));
 }
 
 // ── Layer Copy/Paste ──
@@ -221,5 +222,5 @@ function pasteDocument() {
     project: { ...useProjectStore.getState().project, documents: docs, activeDocId: newDoc.id },
   });
   useProjectStore.getState().restoreDocState();
-  setStatus("문서 붙여넣기됨");
+  setStatus(t("status.docPasted"));
 }

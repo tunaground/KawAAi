@@ -80,7 +80,7 @@ export function PaletteSection() {
       }
       case "removePalette": {
         if (!pal) break;
-        if (set.palettes.length <= 1) { setStatus("마지막 팔레트는 삭제할 수 없습니다"); break; }
+        if (set.palettes.length <= 1) { setStatus(t("status.lastPalette")); break; }
         const ok = await showConfirmModal(
           `팔레트 "${pal.name}" 삭제?`,
           t("modal.delete"),

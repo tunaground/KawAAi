@@ -4,6 +4,7 @@
 import { useProjectStore } from "../stores/projectStore";
 import { useEditorStore } from "../stores/editorStore";
 import { setStatus } from "../stores/statusStore";
+import { t } from "../i18n";
 import { compositeLayersSubset } from "./compositor";
 import { getMeasureCtx, LINE_HEIGHT, LAYER_PADDING } from "./fontMetrics";
 import { getSnapX } from "./compositor";
@@ -15,7 +16,7 @@ export function mergeSelectedLayers() {
     (l) => store.selectedLayerIds.has(l.id) && l.type === "text"
   );
   if (selected.length < 2) {
-    setStatus("병합할 텍스트 레이어를 2개 이상 선택하세요");
+    setStatus(t("layer.mergeNeed2"));
     return;
   }
 

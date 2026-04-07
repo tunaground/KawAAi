@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { ProjectFile, Document, Layer, ViewSettings } from "../types/project";
 import { setStatus } from "./statusStore";
+import { t } from "../i18n";
 
 const LAYER_COLORS = [
   "#2196f3", "#4caf50", "#ff9800", "#e91e63",
@@ -193,7 +194,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       activeLayerId: newActive,
       selectedLayerIds: newSelected,
     });
-    setStatus("레이어 삭제됨");
+    setStatus(t("layer.deleted"));
   },
 
   updateLayer: (id, updates) => {

@@ -15,6 +15,7 @@ let detachedWindow: any = null;
 
 export const PreviewPanel = forwardRef<HTMLDivElement>(function PreviewPanel(_props, ref) {
   const layers = useProjectStore((s) => s.layers);
+  const project = useProjectStore((s) => s.project);
   const t = useI18n((s) => s.t);
   const previewMode = useConfigStore((s) => s.config.previewMode);
   const setPreviewMode = useConfigStore((s) => s.setPreviewMode);
@@ -43,11 +44,15 @@ export const PreviewPanel = forwardRef<HTMLDivElement>(function PreviewPanel(_pr
   };
 
   const handleExport = async () => {
+    const activeDoc = project.documents.find(d => d.id === project.activeDocId);
+    const docName = activeDoc?.name ?? "export";
+    const filename = `${docName}.txt`;
+
     try {
       const { save } = await import("@tauri-apps/plugin-dialog");
       const { invoke } = await import("@tauri-apps/api/core");
       const path = await save({
-        defaultPath: "composite.txt",
+        defaultPath: filename,
         filters: [{ name: "Text", extensions: ["txt"] }],
       });
       if (!path) return;
@@ -59,7 +64,7 @@ export const PreviewPanel = forwardRef<HTMLDivElement>(function PreviewPanel(_pr
     if ("showSaveFilePicker" in window) {
       try {
         const handle = await (window as any).showSaveFilePicker({
-          suggestedName: "composite.txt",
+          suggestedName: filename,
           types: [{ description: "Text", accept: { "text/plain": [".txt"] } }],
         });
         const writable = await handle.createWritable();
@@ -76,10 +81,10 @@ export const PreviewPanel = forwardRef<HTMLDivElement>(function PreviewPanel(_pr
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "composite.txt";
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-    setStatus("텍스트 다운로드됨");
+    setStatus(t("status.textDownloaded"));
   };
 
   const togglePosition = () => {
@@ -99,19 +104,19 @@ export const PreviewPanel = forwardRef<HTMLDivElement>(function PreviewPanel(_pr
       // 창이 열리면 현재 텍스트 전송
       detachedWindow.once("tauri://created", () => {
         setTimeout(() => emitToPreview(compositeRef.current), 500);
-        setStatus("별도 창 열림");
+        setStatus(t("status.detachedOpen"));
       });
 
       // 창 닫힘 감지 → right 모드로 복귀
       detachedWindow.once("tauri://destroyed", () => {
         detachedWindow = null;
         setPreviewMode("right");
-        setStatus("별도 창 닫힘 → 우측 복귀");
+        setStatus(t("status.detachedClosed"));
       });
 
       setPreviewMode("detached");
     } catch {
-      setStatus("별도 창은 Tauri 환경에서만 지원됩니다");
+      setStatus(t("status.detachedNotSupported"));
     }
   };
 
