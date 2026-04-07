@@ -47,6 +47,7 @@ interface ProjectState {
   switchDocument: (docId: number) => void;
   closeDocument: (docId: number) => void;
   renameDocument: (docId: number, name: string) => void;
+  reorderDocuments: (fromIndex: number, toIndex: number) => void;
   saveCurrentDocState: () => void;
   restoreDocState: () => void;
 
@@ -169,6 +170,14 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const docs = state.project.documents.map((d) =>
       d.id === docId ? { ...d, name } : d
     );
+    set({ project: { ...state.project, documents: docs } });
+  },
+
+  reorderDocuments: (fromIndex, toIndex) => {
+    const state = get();
+    const docs = [...state.project.documents];
+    const [moved] = docs.splice(fromIndex, 1);
+    docs.splice(toIndex, 0, moved);
     set({ project: { ...state.project, documents: docs } });
   },
 

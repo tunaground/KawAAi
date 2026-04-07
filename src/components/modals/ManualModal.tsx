@@ -156,7 +156,7 @@ function ManualKo() {
       <p>자주 사용하는 AA 문자를 팔레트에 등록하여 빠르게 삽입합니다.</p>
       <ul>
         <li><strong>드롭다운</strong>으로 팔레트 전환</li>
-        <li><strong>문자 클릭</strong> — 활성 레이어에 삽입</li>
+        <li><strong>문자 클릭</strong> — 활성 레이어의 커서 위치에 삽입</li>
         <li><strong>문자 우클릭</strong> — 삭제</li>
         <li><I><MoreVertical size={14} /></I> <strong>메뉴</strong>:
           <ul>
@@ -173,8 +173,9 @@ function ManualKo() {
         <li><I><FolderOpen size={14} /></I> — MLT 파일이 있는 디렉토리 선택. 경로는 앱 설정에 저장.</li>
         <li><I><RefreshCw size={14} /></I> — 파일 목록 새로고침</li>
         <li><strong>드롭다운 1</strong> — MLT 파일 선택</li>
-        <li><strong>드롭다운 2</strong> — 섹션 선택 (항목이 많은 경우)</li>
+        <li><strong>드롭다운 2</strong> — 섹션 선택 (파일 내 섹션 헤더 기반)</li>
         <li><strong>AA 항목 클릭</strong> — 레이어로 삽입</li>
+        <li><strong>AA 항목 마우스 오버</strong> — 큰 프리뷰 팝업 표시</li>
       </ul>
 
       <h2>합성 결과</h2>
@@ -241,6 +242,20 @@ function ManualJa() {
         <li><I><Save size={14} /></I> <strong>保存</strong> (<K>Ctrl+S</K>) / 名前を付けて保存 (<K>Ctrl+Shift+S</K>)</li>
         <li><strong>自動保存</strong> — 設定で間隔指定</li>
       </ul>
+      <h3>ファイル形式</h3>
+      <ul>
+        <li><strong>.aaproj</strong> — プロジェクトファイル（全ドキュメント含む）</li>
+        <li><strong>.aapal</strong> — パレット / <strong>.aapals</strong> — パレットセット</li>
+      </ul>
+
+      <h2>ドキュメントタブ</h2>
+      <ul>
+        <li><K>Ctrl+N</K> — 新規ドキュメント</li>
+        <li><K>Ctrl+W</K> — ドキュメントを閉じる（最低1つ維持）</li>
+        <li><K>Ctrl+Shift+T</K> — 閉じたドキュメントを復元</li>
+        <li><strong>ダブルクリック</strong> — ドキュメント名変更</li>
+        <li>タブクリック後 <K>Ctrl+C</K>/<K>Ctrl+V</K> — ドキュメントコピー/貼り付け</li>
+      </ul>
 
       <h2>レイヤー</h2>
       <ul>
@@ -258,14 +273,30 @@ function ManualJa() {
         <li><I><X size={14} /></I> または <K>Escape</K> でモードキャンセル</li>
       </ul>
 
+      <h2>テキスト編集</h2>
+      <ul>
+        <li><strong>スペースバー</strong> — ドット文字サイクル入力。Hair Space → Thin Space → ... 9段階。</li>
+      </ul>
+
       <h2>レイヤーキャンバス</h2>
       <p><I><PenTool size={14} /></I> ボタンでモーダルを開き、画像を参考にAAを作成してレイヤーとして挿入。</p>
 
       <h2>パレット</h2>
-      <p><I><MoreVertical size={14} /></I> メニューからキャラクター追加、パレット管理、インポート/エクスポート (.aapal/.aapals)。</p>
+      <ul>
+        <li><strong>文字クリック</strong> — アクティブレイヤーのカーソル位置に挿入</li>
+        <li><strong>文字右クリック</strong> — 削除</li>
+        <li><I><MoreVertical size={14} /></I> メニューからキャラクター追加、パレット管理、インポート/エクスポート (.aapal/.aapals)</li>
+      </ul>
 
       <h2>ライブラリ (MLT)</h2>
-      <p><I><FolderOpen size={14} /></I> ディレクトリ選択、<I><RefreshCw size={14} /></I> 更新。AAクリックでレイヤー挿入。</p>
+      <ul>
+        <li><I><FolderOpen size={14} /></I> — ディレクトリ選択</li>
+        <li><I><RefreshCw size={14} /></I> — 更新</li>
+        <li><strong>ドロップダウン1</strong> — MLTファイル選択</li>
+        <li><strong>ドロップダウン2</strong> — セクション選択</li>
+        <li><strong>AAクリック</strong> — レイヤーとして挿入</li>
+        <li><strong>AAマウスオーバー</strong> — 大きなプレビューポップアップ表示</li>
+      </ul>
 
       <h2>合成結果</h2>
       <ul>
@@ -282,6 +313,7 @@ function ManualJa() {
           <tr><td><K>Ctrl+Shift+T</K></td><td>閉じたドキュメントを復元</td></tr>
           <tr><td><K>Ctrl+O</K></td><td>開く</td></tr>
           <tr><td><K>Ctrl+S</K></td><td>保存</td></tr>
+          <tr><td><K>Ctrl+Shift+S</K></td><td>名前を付けて保存</td></tr>
           <tr><td><K>Ctrl+Z</K></td><td>元に戻す</td></tr>
           <tr><td><K>Ctrl+Shift+Z</K></td><td>やり直し</td></tr>
           <tr><td><K>Ctrl+C</K>/<K>V</K></td><td>コピー/貼り付け</td></tr>
@@ -317,6 +349,20 @@ function ManualEn() {
         <li><I><Save size={14} /></I> <strong>Save</strong> (<K>Ctrl+S</K>) / Save As (<K>Ctrl+Shift+S</K>)</li>
         <li><strong>Auto Save</strong> — Configurable interval in settings</li>
       </ul>
+      <h3>File Formats</h3>
+      <ul>
+        <li><strong>.aaproj</strong> — Project file (all documents)</li>
+        <li><strong>.aapal</strong> — Palette / <strong>.aapals</strong> — Palette set</li>
+      </ul>
+
+      <h2>Document Tabs</h2>
+      <ul>
+        <li><K>Ctrl+N</K> — New document</li>
+        <li><K>Ctrl+W</K> — Close document (minimum 1 kept)</li>
+        <li><K>Ctrl+Shift+T</K> — Reopen closed document</li>
+        <li><strong>Double-click</strong> — Rename document</li>
+        <li>Click tab then <K>Ctrl+C</K>/<K>Ctrl+V</K> — Copy/paste document</li>
+      </ul>
 
       <h2>Layers</h2>
       <ul>
@@ -335,14 +381,30 @@ function ManualEn() {
         <li><I><X size={14} /></I> or <K>Escape</K> to cancel mode</li>
       </ul>
 
+      <h2>Text Editing</h2>
+      <ul>
+        <li><strong>Spacebar</strong> — Dot character cycling. Hair Space → Thin Space → ... 9 stages.</li>
+      </ul>
+
       <h2>Layer Canvas (Quick Edit)</h2>
       <p><I><PenTool size={14} /></I> opens a modal for composing AA with an image reference, then inserts as a layer.</p>
 
       <h2>Palette</h2>
-      <p><I><MoreVertical size={14} /></I> menu for adding characters, managing palettes, import/export (.aapal/.aapals).</p>
+      <ul>
+        <li><strong>Click character</strong> — Insert at cursor position in active layer</li>
+        <li><strong>Right-click character</strong> — Delete</li>
+        <li><I><MoreVertical size={14} /></I> menu for adding characters, managing palettes, import/export (.aapal/.aapals)</li>
+      </ul>
 
       <h2>Library (MLT)</h2>
-      <p><I><FolderOpen size={14} /></I> select directory, <I><RefreshCw size={14} /></I> refresh. Click AA to insert as layer.</p>
+      <ul>
+        <li><I><FolderOpen size={14} /></I> — Select directory</li>
+        <li><I><RefreshCw size={14} /></I> — Refresh</li>
+        <li><strong>Dropdown 1</strong> — Select MLT file</li>
+        <li><strong>Dropdown 2</strong> — Select section</li>
+        <li><strong>Click AA</strong> — Insert as layer</li>
+        <li><strong>Hover AA</strong> — Large preview popup</li>
+      </ul>
 
       <h2>Composite Result</h2>
       <ul>
@@ -359,6 +421,7 @@ function ManualEn() {
           <tr><td><K>Ctrl+Shift+T</K></td><td>Reopen closed document</td></tr>
           <tr><td><K>Ctrl+O</K></td><td>Open</td></tr>
           <tr><td><K>Ctrl+S</K></td><td>Save</td></tr>
+          <tr><td><K>Ctrl+Shift+S</K></td><td>Save As</td></tr>
           <tr><td><K>Ctrl+Z</K></td><td>Undo</td></tr>
           <tr><td><K>Ctrl+Shift+Z</K></td><td>Redo</td></tr>
           <tr><td><K>Ctrl+C</K>/<K>V</K></td><td>Copy/Paste layers (tab focus: documents)</td></tr>

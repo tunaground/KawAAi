@@ -53,7 +53,7 @@
 
 .sectionActions {
   display: flex;
-  gap: 2px;
+  gap: 0.35rem;
 }
 
 .sectionBtn {
@@ -69,6 +69,25 @@
   border-radius: 3px;
 }
 .sectionBtn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+/* 레이어 섹션 헤더 버튼 — 개별 레이어 .btn과 동일 크기/간격 */
+.layerHeaderBtn {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.layerHeaderBtn:hover {
   background: var(--bg-tertiary);
   color: var(--text-primary);
 }

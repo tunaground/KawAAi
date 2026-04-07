@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, forwardRef } from "react";
-import { ChevronDown, Plus, Image } from "lucide-react";
+import { ChevronDown, Plus, Image, Eye, EyeOff, Lock, Unlock } from "lucide-react";
 import { useProjectStore, saveUndoSnapshot } from "../../stores/projectStore";
 import { useConfigStore } from "../../stores/configStore";
 import { useI18n } from "../../i18n";
@@ -18,7 +18,24 @@ export const LeftPanel = forwardRef<HTMLDivElement>(function LeftPanel(_props, r
   const layers = useProjectStore((s) => s.layers);
   const moveLayerOrder = useProjectStore((s) => s.moveLayerOrder);
   const createLayer = useProjectStore((s) => s.createLayer);
+  const updateLayer = useProjectStore((s) => s.updateLayer);
   const t = useI18n((s) => s.t);
+
+  const allVisible = layers.length > 0 && layers.every((l) => l.visible);
+  const noneVisible = layers.length > 0 && layers.every((l) => !l.visible);
+  const allLocked = layers.length > 0 && layers.every((l) => l.locked);
+
+  const toggleAllVisible = () => {
+    saveUndoSnapshot();
+    // 전부 보이면 → 전부 숨기기, 그 외(일부 숨김/전부 숨김) → 전부 보이기
+    const newVal = !allVisible;
+    layers.forEach((l) => updateLayer(l.id, { visible: newVal }));
+  };
+  const toggleAllLocked = () => {
+    saveUndoSnapshot();
+    const newVal = !allLocked;
+    layers.forEach((l) => updateLayer(l.id, { locked: newVal }));
+  };
 
   const layerListRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ layerId: number } | null>(null);
@@ -155,11 +172,17 @@ export const LeftPanel = forwardRef<HTMLDivElement>(function LeftPanel(_props, r
             <span>레이어</span>
           </div>
           <div className={styles.sectionActions} onClick={(e) => e.stopPropagation()}>
-            <button className={styles.sectionBtn} onClick={addTextLayer} title="텍스트 레이어 추가">
-              <Plus size={12} />
+            <button className={styles.layerHeaderBtn} title={t("layer.addImage")}>
+              <Image size={11} />
             </button>
-            <button className={styles.sectionBtn} title="이미지 레이어 추가">
-              <Image size={12} />
+            <button className={styles.layerHeaderBtn} onClick={toggleAllLocked} title={allLocked ? t("layer.unlock") : t("layer.lock")}>
+              {allLocked ? <Lock size={11} /> : <Unlock size={11} />}
+            </button>
+            <button className={styles.layerHeaderBtn} onClick={toggleAllVisible} title={noneVisible ? t("layer.visible") : t("layer.hidden")}>
+              {noneVisible ? <EyeOff size={11} /> : <Eye size={11} />}
+            </button>
+            <button className={styles.layerHeaderBtn} onClick={addTextLayer} title={t("layer.addText")}>
+              <Plus size={11} />
             </button>
           </div>
         </div>

@@ -14,6 +14,13 @@
   font-weight: 600;
 }
 
+.version {
+  font-size: 0.6rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+
 .toolbar {
   display: flex;
   gap: 0.25rem;

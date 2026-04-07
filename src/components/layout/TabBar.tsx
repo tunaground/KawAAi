@@ -12,8 +12,13 @@ export function TabBar() {
   const saveCurrentDocState = useProjectStore((s) => s.saveCurrentDocState);
   const restoreDocState = useProjectStore((s) => s.restoreDocState);
   const renameDocument = useProjectStore((s) => s.renameDocument);
+  const reorderDocuments = useProjectStore((s) => s.reorderDocuments);
   const [editingDocId, setEditingDocId] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // 드래그 상태
+  const dragRef = useRef<{ docId: number; startX: number } | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const handleAdd = () => {
     saveCurrentDocState();
@@ -35,15 +40,60 @@ export function TabBar() {
     return () => document.removeEventListener("mousedown", onMouseDown);
   }, [setTabBarFocused]);
 
+  // 드래그 이벤트
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!dragRef.current) return;
+      if (Math.abs(e.clientX - dragRef.current.startX) < 5) return;
+
+      const tabBar = document.querySelector(`.${styles.tabBar}`);
+      if (!tabBar) return;
+      const tabs = tabBar.querySelectorAll(`[data-doc-id]`);
+      for (let i = 0; i < tabs.length; i++) {
+        const rect = tabs[i].getBoundingClientRect();
+        if (e.clientX >= rect.left && e.clientX <= rect.right) {
+          const midX = rect.left + rect.width / 2;
+          setDragOverIndex(e.clientX < midX ? i : i + 1);
+          return;
+        }
+      }
+    };
+
+    const onMouseUp = () => {
+      if (dragRef.current && dragOverIndex !== null) {
+        const fromIndex = documents.findIndex((d) => d.id === dragRef.current!.docId);
+        let toIndex = dragOverIndex;
+        if (fromIndex !== -1 && toIndex !== fromIndex && toIndex !== fromIndex + 1) {
+          if (toIndex > fromIndex) toIndex--;
+          reorderDocuments(fromIndex, toIndex);
+        }
+      }
+      dragRef.current = null;
+      setDragOverIndex(null);
+    };
+
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [documents, reorderDocuments, dragOverIndex]);
+
   return (
     <div className={styles.tabBar}>
-      {documents.map((doc) => (
+      {documents.map((doc, i) => (
         <div
           key={doc.id}
+          data-doc-id={doc.id}
           className={`${styles.tab} ${doc.id === activeDocId ? styles.active : ""}`}
-          onMouseDown={() => {
+          onMouseDown={(e) => {
+            if ((e.target as HTMLElement).closest(`.${styles.tabClose}`)) return;
+            if ((e.target as HTMLElement).closest("input")) return;
+            dragRef.current = { docId: doc.id, startX: e.clientX };
             if (doc.id !== activeDocId) switchDocument(doc.id);
           }}
+          style={dragOverIndex === i ? { borderLeft: "2px solid var(--accent)" } : dragOverIndex === i + 1 && i === documents.length - 1 ? { borderRight: "2px solid var(--accent)" } : undefined}
         >
           {editingDocId === doc.id ? (
             <input
