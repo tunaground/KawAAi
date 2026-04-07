@@ -2,8 +2,8 @@
  * 레이어 작업: 병합 등
  */
 import { useProjectStore } from "../stores/projectStore";
-import { useEditorStore } from "../stores/editorStore";
-import { setStatus } from "../stores/statusStore";
+import { saveUndoSnapshot } from "../stores/projectStore";
+import { setStatus } from "../stores/projectStore";
 import { t } from "../i18n";
 import { compositeLayersSubset } from "./compositor";
 import { getMeasureCtx, LINE_HEIGHT, LAYER_PADDING } from "./fontMetrics";
@@ -21,12 +21,7 @@ export function mergeSelectedLayers() {
   }
 
   // undo snapshot
-  useEditorStore.getState().pushUndo({
-    layers: store.layers.map((l) => ({ ...l })),
-    activeLayerId: store.activeLayerId,
-    selectedLayerIds: [...store.selectedLayerIds],
-    nextLayerId: store.nextLayerId,
-  });
+  saveUndoSnapshot();
 
   // bounding box origin
   let minX = Infinity, minY = Infinity;
@@ -85,5 +80,5 @@ export function mergeSelectedLayers() {
     selectedLayerIds: new Set([id]),
   });
 
-  setStatus(`${selected.length}개 레이어 병합됨`);
+  setStatus(`${selected.length}${t("layer.merged")}`);
 }

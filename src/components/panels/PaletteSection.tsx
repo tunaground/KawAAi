@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { MoreVertical } from "lucide-react";
 import { usePaletteStore } from "../../stores/paletteStore";
 import { useProjectStore } from "../../stores/projectStore";
-import { setStatus } from "../../stores/statusStore";
+import { saveUndoSnapshot } from "../../stores/projectStore";
+import { setStatus } from "../../stores/projectStore";
 import { showInputModal, showConfirmModal } from "../modals/InputModal";
 import { useI18n } from "../../i18n";
 import styles from "./PaletteSection.module.css";
@@ -18,9 +19,7 @@ export function PaletteSection() {
   const setPaletteSet = usePaletteStore((s) => s.setPaletteSet);
   const removePalette = usePaletteStore((s) => s.removePalette);
 
-  const activeLayerId = useProjectStore((s) => s.activeLayerId);
   const updateLayer = useProjectStore((s) => s.updateLayer);
-  const layers = useProjectStore((s) => s.layers);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuBtnRef = useRef<HTMLDivElement>(null);
@@ -42,11 +41,26 @@ export function PaletteSection() {
   }, [menuOpen]);
 
   const insertChar = (ch: string) => {
+    const { activeLayerId, layers } = useProjectStore.getState();
     if (activeLayerId === null) { setStatus(t("palette.noActiveLayer")); return; }
     const layer = layers.find((l) => l.id === activeLayerId);
     if (!layer || layer.type !== "text") return;
-    updateLayer(layer.id, { text: layer.text + ch });
-    setStatus(`"${ch}" 삽입됨`);
+    saveUndoSnapshot();
+
+    // 활성 textarea의 커서 위치에 삽입
+    const ta = document.querySelector(`textarea:focus`) as HTMLTextAreaElement | null;
+    if (ta && ta.selectionStart != null) {
+      const pos = ta.selectionStart;
+      const newText = layer.text.slice(0, pos) + ch + layer.text.slice(pos);
+      updateLayer(layer.id, { text: newText });
+      // 커서를 삽입 문자 뒤로 이동
+      requestAnimationFrame(() => {
+        ta.selectionStart = ta.selectionEnd = pos + ch.length;
+      });
+    } else {
+      updateLayer(layer.id, { text: layer.text + ch });
+    }
+    setStatus(`"${ch}" ${t("palette.charInserted")}`);
   };
 
   const handleMenu = (e: React.MouseEvent) => {
@@ -66,7 +80,7 @@ export function PaletteSection() {
         const ch = await showInputModal(t("palette.charPrompt"));
         if (ch && [...ch].length >= 1) {
           addChar([...ch][0]);
-          setStatus(`캐릭터 "${[...ch][0]}" 추가됨`);
+          setStatus(`"${[...ch][0]}" ${t("palette.charAdded")}`);
         }
         break;
       }
@@ -74,7 +88,7 @@ export function PaletteSection() {
         const name = await showInputModal(t("palette.namePrompt"));
         if (name) {
           addPalette(name);
-          setStatus(`팔레트 "${name}" 추가됨`);
+          setStatus(`"${name}" ${t("palette.added")}`);
         }
         break;
       }
@@ -82,13 +96,13 @@ export function PaletteSection() {
         if (!pal) break;
         if (set.palettes.length <= 1) { setStatus(t("status.lastPalette")); break; }
         const ok = await showConfirmModal(
-          `팔레트 "${pal.name}" 삭제?`,
+          `"${pal.name}" ${t("palette.deleteConfirm")}`,
           t("modal.delete"),
           "danger"
         );
         if (ok) {
           removePalette(activePaletteIndex);
-          setStatus(`팔레트 "${pal.name}" 삭제됨`);
+          setStatus(`"${pal.name}" ${t("palette.deleted")}`);
         }
         break;
       }
@@ -96,7 +110,7 @@ export function PaletteSection() {
         if (!pal) break;
         const json = JSON.stringify({ name: pal.name, chars: pal.chars }, null, 2);
         const palPath = await saveFileWithDialog(json, `${pal.name}.aapal`);
-        if (palPath) setStatus(`팔레트 익스포트됨: ${palPath}`);
+        if (palPath) setStatus(`${t("palette.exported")}: ${palPath}`);
         break;
       }
       case "importPalette": {
@@ -105,21 +119,21 @@ export function PaletteSection() {
           const palettes = [...set.palettes, { name: data.name, chars: data.chars }];
           setPaletteSet({ ...set, palettes });
           usePaletteStore.getState().setActivePaletteIndex(palettes.length - 1);
-          setStatus(`팔레트 "${data.name}" 임포트됨`);
+          setStatus(`"${data.name}" ${t("palette.imported")}`);
         }
         break;
       }
       case "exportSet": {
         const json = JSON.stringify(set, null, 2);
         const setPath = await saveFileWithDialog(json, `${set.name}.aapals`);
-        if (setPath) setStatus(`팔레트세트 익스포트됨: ${setPath}`);
+        if (setPath) setStatus(`${t("palette.setExported")}: ${setPath}`);
         break;
       }
       case "importSet": {
         const data = await pickJsonFile(".aapals");
         if (data && data.name && Array.isArray(data.palettes)) {
           setPaletteSet(data as any);
-          setStatus(`팔레트세트 "${data.name}" 임포트됨`);
+          setStatus(`"${data.name}" ${t("palette.setImported")}`);
         }
         break;
       }
@@ -149,7 +163,7 @@ export function PaletteSection() {
             key={i}
             className={styles.charBtn}
             title={`U+${ch.codePointAt(0)?.toString(16).toUpperCase().padStart(4, "0")}`}
-            onClick={() => insertChar(ch)}
+            onMouseDown={(e) => { e.preventDefault(); insertChar(ch); }}
             onContextMenu={async (e) => {
               e.preventDefault();
               const ok = await showConfirmModal(
@@ -159,7 +173,7 @@ export function PaletteSection() {
               );
               if (ok) {
                 removeChar(i);
-                setStatus(`캐릭터 "${ch}" 삭제됨`);
+                setStatus(`"${ch}" ${t("palette.charDeleted")}`);
               }
             }}
           >
@@ -175,7 +189,7 @@ export function PaletteSection() {
         <div ref={menuRef} className={styles.menu} style={{ left: menuPos.left, top: menuPos.top }}>
           <div className={styles.menuItem} onClick={() => menuAction("addChar")}>{t("palette.addChar")}</div>
           <div className={styles.menuItem} onClick={() => menuAction("addPalette")}>{t("palette.addPalette")}</div>
-          <div className={styles.menuItem} onClick={() => menuAction("removePalette")} style={{ color: "#f44" }}>팔레트 삭제</div>
+          <div className={styles.menuItem} onClick={() => menuAction("removePalette")} style={{ color: "#f44" }}>{t("palette.deletePalette")}</div>
           <div className={styles.menuSep} />
           <div className={styles.menuItem} onClick={() => menuAction("importPalette")}>{t("palette.importPalette")}</div>
           <div className={styles.menuItem} onClick={() => menuAction("exportPalette")}>{t("palette.exportPalette")}</div>

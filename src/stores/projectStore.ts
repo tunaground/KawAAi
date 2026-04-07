@@ -1,7 +1,18 @@
 import { create } from "zustand";
 import type { ProjectFile, Document, Layer, ViewSettings } from "../types/project";
-import { setStatus } from "./statusStore";
+import type { DragState, LayerClipboard } from "../types/editor";
 import { t } from "../i18n";
+
+const MAX_UNDO = 50;
+
+interface UndoSnapshot {
+  layers: Layer[];
+  activeLayerId: number | null;
+  selectedLayerIds: number[];
+  nextLayerId: number;
+}
+
+export type EditorMode = "normal" | "opaquePaint" | "opaqueErase";
 
 const LAYER_COLORS = [
   "#2196f3", "#4caf50", "#ff9800", "#e91e63",
@@ -49,6 +60,42 @@ interface ProjectState {
 
   // 뷰 설정
   setViewSetting: <K extends keyof ViewSettings>(key: K, value: ViewSettings[K]) => void;
+
+  // 뷰/상태
+  statusMessage: string;
+  projectPath: string | null;
+  lastSavedAt: string | null;
+
+  // 에디터 모드
+  editorMode: EditorMode;
+  setEditorMode: (mode: EditorMode) => void;
+
+  // 드래그
+  dragState: DragState | null;
+  isDraggingLayer: boolean;
+  setDragState: (state: DragState | null) => void;
+  setIsDraggingLayer: (v: boolean) => void;
+
+  // 클립보드
+  layerClipboard: LayerClipboard[];
+  docClipboard: object | null;
+  tabBarFocused: boolean;
+  setLayerClipboard: (v: LayerClipboard[]) => void;
+  setDocClipboard: (v: object | null) => void;
+  setTabBarFocused: (v: boolean) => void;
+
+  // Undo/Redo
+  undoStack: string[];
+  redoStack: string[];
+  pushUndo: (snapshot: UndoSnapshot, clearRedo?: boolean) => void;
+  popUndo: () => UndoSnapshot | null;
+  popRedo: () => UndoSnapshot | null;
+  pushRedo: (snapshot: UndoSnapshot) => void;
+  clearUndoRedo: () => void;
+
+  // 닫힌 문서 복원
+  closedDocStack: string[];
+  reopenLastClosedDocument: () => void;
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -92,6 +139,18 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   closeDocument: (docId) => {
     const state = get();
     if (state.project.documents.length <= 1) return;
+
+    // 닫기 전 현재 문서 상태 저장
+    get().saveCurrentDocState();
+
+    // 닫힌 문서를 스택에 보관
+    const closedDoc = get().project.documents.find((d) => d.id === docId);
+    if (closedDoc) {
+      const stack = [...get().closedDocStack, JSON.stringify(closedDoc)];
+      if (stack.length > 20) stack.shift();
+      set({ closedDocStack: stack });
+    }
+
     const docs = state.project.documents.filter((d) => d.id !== docId);
     let activeDocId = state.project.activeDocId;
     if (activeDocId === docId) {
@@ -174,7 +233,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       activeLayerId: id,
       selectedLayerIds: new Set([id]),
     });
-    setStatus(`레이어 추가됨: ${layer.name}`);
+    setStatus(`${t("layer.added")}: ${layer.name}`);
     return layer;
   },
 
@@ -260,4 +319,100 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   setViewSetting: (key, value) => {
     set({ viewSettings: { ...get().viewSettings, [key]: value } });
   },
-}));
+
+  // 상태 표시
+  statusMessage: "Ready",
+  projectPath: null,
+  lastSavedAt: null,
+
+  // 에디터 모드
+  editorMode: "normal" as EditorMode,
+  setEditorMode: (mode) => set({ editorMode: mode }),
+
+  // 드래그
+  dragState: null,
+  isDraggingLayer: false,
+  setDragState: (state) => set({ dragState: state }),
+  setIsDraggingLayer: (v) => set({ isDraggingLayer: v }),
+
+  // 클립보드
+  layerClipboard: [],
+  docClipboard: null,
+  tabBarFocused: false,
+  setLayerClipboard: (v) => set({ layerClipboard: v }),
+  setDocClipboard: (v) => set({ docClipboard: v }),
+  setTabBarFocused: (v) => set({ tabBarFocused: v }),
+
+  // Undo/Redo
+  undoStack: [],
+  redoStack: [],
+  pushUndo: (snapshot, clearRedo = true) => {
+    const stack = [...get().undoStack, JSON.stringify(snapshot)];
+    if (stack.length > MAX_UNDO) stack.shift();
+    set(clearRedo ? { undoStack: stack, redoStack: [] } : { undoStack: stack });
+  },
+  popUndo: () => {
+    const stack = [...get().undoStack];
+    if (stack.length === 0) return null;
+    const json = stack.pop()!;
+    set({ undoStack: stack });
+    return JSON.parse(json);
+  },
+  popRedo: () => {
+    const stack = [...get().redoStack];
+    if (stack.length === 0) return null;
+    const json = stack.pop()!;
+    set({ redoStack: stack });
+    return JSON.parse(json);
+  },
+  pushRedo: (snapshot) => {
+    set({ redoStack: [...get().redoStack, JSON.stringify(snapshot)] });
+  },
+  clearUndoRedo: () => set({ undoStack: [], redoStack: [] }),
+
+  // 닫힌 문서 복원
+  closedDocStack: [],
+  reopenLastClosedDocument: () => {
+    const stack = [...get().closedDocStack];
+    if (stack.length === 0) return;
+    const json = stack.pop()!;
+    set({ closedDocStack: stack });
+
+    const doc: Document = JSON.parse(json);
+    get().saveCurrentDocState();
+    const state = get();
+    set({
+      project: {
+        ...state.project,
+        documents: [...state.project.documents, doc],
+        activeDocId: doc.id,
+      },
+    });
+    get().restoreDocState();
+  },
+}))
+
+/** 컴포넌트 밖에서 사용 */
+export function setStatus(msg: string) {
+  useProjectStore.setState({ statusMessage: msg });
+}
+
+export function setProjectPath(path: string | null) {
+  useProjectStore.setState({ projectPath: path });
+}
+
+export function markSaved() {
+  useProjectStore.setState({ lastSavedAt: new Date().toLocaleTimeString() });
+}
+
+/** 현재 상태를 스냅샷으로 캡처하여 undoStack에 push */
+export function saveUndoSnapshot() {
+  const { layers, activeLayerId, selectedLayerIds, nextLayerId, pushUndo } =
+    useProjectStore.getState();
+  pushUndo({
+    layers: layers.map((l) => ({ ...l, opaqueRanges: l.opaqueRanges.map((r) => ({ ...r })) })),
+    activeLayerId,
+    selectedLayerIds: [...selectedLayerIds],
+    nextLayerId,
+  });
+}

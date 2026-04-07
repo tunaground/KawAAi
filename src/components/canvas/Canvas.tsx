@@ -1,6 +1,5 @@
 import { useRef, useEffect, useCallback } from "react";
 import { useProjectStore } from "../../stores/projectStore";
-import { useEditorStore } from "../../stores/editorStore";
 import { CANVAS_MARGIN, LINE_HEIGHT } from "../../lib/fontMetrics";
 import { getSnapX } from "../../lib/compositor";
 import { LayerBox } from "./LayerBox";
@@ -11,8 +10,8 @@ export function Canvas() {
   const activeLayerId = useProjectStore((s) => s.activeLayerId);
   const canvasSize = useProjectStore((s) => s.canvasSize);
   const setCanvasSize = useProjectStore((s) => s.setCanvasSize);
-  const viewSettings = useProjectStore((s) => s.viewSettings);
-  const isDraggingLayer = useEditorStore((s) => s.isDraggingLayer);
+  const gridVisible = useProjectStore((s) => s.viewSettings.gridVisible);
+  const isDraggingLayer = useProjectStore((s) => s.isDraggingLayer);
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const safeAreaRef = useRef<HTMLDivElement>(null);
@@ -215,7 +214,7 @@ export function Canvas() {
   }, [drawGuides]);
 
   // ── 캔버스 리사이즈 드래그 ──
-  const canvasResizeDrag = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null);
+  const canvasResizeDrag = useRef<{ startX: number; startY: number; origW: number; origH: number; minW: number; minH: number } | null>(null);
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
@@ -224,17 +223,8 @@ export function Canvas() {
       const dx = e.clientX - drag.startX;
       const dy = e.clientY - drag.startY;
 
-      // 최소 크기: 레이어가 잘리지 않도록
-      let maxR = 0, maxB = 0;
-      layers.forEach((l) => {
-        maxR = Math.max(maxR, l.x + l.w);
-        maxB = Math.max(maxB, l.y + l.h);
-      });
-      const minW = m * 2 + maxR;
-      const minH = m * 2 + maxB;
-
-      canvasRef.current.style.width = Math.max(minW, drag.origW + dx) + "px";
-      canvasRef.current.style.height = Math.max(minH, drag.origH + dy) + "px";
+      canvasRef.current.style.width = Math.max(drag.minW, drag.origW + dx) + "px";
+      canvasRef.current.style.height = Math.max(drag.minH, drag.origH + dy) + "px";
     };
     const onUp = () => {
       if (canvasResizeDrag.current && canvasRef.current) {
@@ -251,17 +241,24 @@ export function Canvas() {
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
     };
-  }, [layers, m]);
+  }, [m]);
 
   const startCanvasResize = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!canvasRef.current) return;
+    let maxR = 0, maxB = 0;
+    useProjectStore.getState().layers.forEach((l) => {
+      maxR = Math.max(maxR, l.x + l.w);
+      maxB = Math.max(maxB, l.y + l.h);
+    });
     canvasResizeDrag.current = {
       startX: e.clientX,
       startY: e.clientY,
       origW: canvasRef.current.offsetWidth,
       origH: canvasRef.current.offsetHeight,
+      minW: m * 2 + maxR,
+      minH: m * 2 + maxB,
     };
   };
 
@@ -274,7 +271,7 @@ export function Canvas() {
         <canvas className={styles.guides} ref={guidesRef} />
 
         <div className={styles.safeArea} ref={safeAreaRef}>
-          {viewSettings.gridVisible && (
+          {gridVisible && (
             <canvas className={styles.grid} ref={gridRef} />
           )}
           {layers.map((layer, idx) => (

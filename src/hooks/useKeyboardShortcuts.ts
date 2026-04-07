@@ -1,7 +1,5 @@
 import { useEffect, useCallback } from "react";
-import { useProjectStore } from "../stores/projectStore";
-import { useEditorStore } from "../stores/editorStore";
-import { setStatus } from "../stores/statusStore";
+import { useProjectStore, setStatus, saveUndoSnapshot } from "../stores/projectStore";
 import { t } from "../i18n";
 import type { LayerClipboard } from "../types/editor";
 
@@ -44,9 +42,9 @@ export function useKeyboardShortcuts() {
 
     // Escape: 채색모드 해제 → 선택 해제
     if (e.key === "Escape") {
-      const mode = useEditorStore.getState().editorMode;
+      const mode = useProjectStore.getState().editorMode;
       if (mode !== "normal") {
-        useEditorStore.getState().setEditorMode("normal");
+        useProjectStore.getState().setEditorMode("normal");
       } else {
         useProjectStore.getState().setActiveLayer(null);
       }
@@ -57,15 +55,19 @@ export function useKeyboardShortcuts() {
     // textarea 안에서 텍스트 선택 중이면 일반 텍스트 복사에 맡김
     // 선택 영역 없으면 레이어 복사/붙여넣기로 처리
     if (mod && (e.key === "c" || e.key === "v")) {
+      // 붙여넣기: textarea/input 안이면 항상 브라우저 기본 동작에 맡김
+      if (e.key === "v" && inTextarea) return;
+
+      // 복사: textarea에서 텍스트 선택 중이면 브라우저 기본 동작에 맡김
       const hasTextSelection =
         inTextarea &&
         target instanceof HTMLTextAreaElement &&
         target.selectionStart !== target.selectionEnd;
 
-      if (hasTextSelection) return; // 일반 텍스트 복사/붙여넣기에 맡김
+      if (hasTextSelection) return;
 
       e.preventDefault();
-      const tabFocused = useEditorStore.getState().tabBarFocused;
+      const tabFocused = useProjectStore.getState().tabBarFocused;
 
       if (e.key === "c") {
         if (tabFocused) {
@@ -74,7 +76,7 @@ export function useKeyboardShortcuts() {
           copyLayers();
         }
       } else {
-        const docClip = useEditorStore.getState().docClipboard;
+        const docClip = useProjectStore.getState().docClipboard;
         if (tabFocused && docClip) {
           pasteDocument();
         } else {
@@ -96,7 +98,7 @@ export function useKeyboardShortcuts() {
 function captureSnapshot() {
   const s = useProjectStore.getState();
   return {
-    layers: s.layers.map((l) => ({ ...l })),
+    layers: s.layers.map((l) => ({ ...l, opaqueRanges: l.opaqueRanges.map((r) => ({ ...r })) })),
     activeLayerId: s.activeLayerId,
     selectedLayerIds: [...s.selectedLayerIds],
     nextLayerId: s.nextLayerId,
@@ -113,7 +115,7 @@ function restoreSnapshot(snap: ReturnType<typeof captureSnapshot>) {
 }
 
 function undo() {
-  const editor = useEditorStore.getState();
+  const editor = useProjectStore.getState();
   const snap = editor.popUndo();
   if (!snap) { setStatus(t("status.cannotUndo")); return; }
   editor.pushRedo(captureSnapshot());
@@ -122,10 +124,10 @@ function undo() {
 }
 
 function redo() {
-  const editor = useEditorStore.getState();
+  const editor = useProjectStore.getState();
   const snap = editor.popRedo();
   if (!snap) { setStatus(t("status.cannotRedo")); return; }
-  editor.pushUndo(captureSnapshot());
+  editor.pushUndo(captureSnapshot(), false);
   restoreSnapshot(snap);
   setStatus(t("status.redo"));
 }
@@ -153,53 +155,73 @@ function copyLayers() {
       textColor: l.textColor,
       opacity: l.opacity,
       imageSrc: l.imageSrc,
+      opaqueRanges: [...l.opaqueRanges],
     }));
-  useEditorStore.getState().setLayerClipboard(clipboard);
-  setStatus(`${clipboard.length}개 레이어 복사됨`);
+  useProjectStore.getState().setLayerClipboard(clipboard);
+  setStatus(`${clipboard.length}${t("layer.copied")}`);
 }
 
 function pasteLayers() {
-  const clipboard = useEditorStore.getState().layerClipboard;
+  const clipboard = useProjectStore.getState().layerClipboard;
   if (clipboard.length === 0) return;
 
-  useEditorStore.getState().pushUndo(captureSnapshot());
+  saveUndoSnapshot();
 
-  const store = useProjectStore.getState();
+  const state = useProjectStore.getState();
   const offset = 18; // LINE_HEIGHT
+  const LAYER_COLORS = ["#2196f3", "#4caf50", "#ff9800", "#e91e63", "#9c27b0", "#00bcd4", "#ff5722", "#8bc34a"];
+  const newLayers: typeof state.layers = [];
   const newSelected = new Set<number>();
+  let nextId = state.nextLayerId;
 
   clipboard.forEach((lc) => {
-    const layer = store.createLayer(lc.text, lc.x + offset, lc.y + offset, lc.w, lc.h, {
+    const id = nextId++;
+    newLayers.push({
+      id,
+      name: lc.name + " copy",
       type: lc.type,
-      imageSrc: lc.imageSrc,
-      opacity: lc.opacity,
+      text: lc.text,
+      x: lc.x + offset,
+      y: lc.y + offset,
+      w: lc.w,
+      h: lc.h,
+      visible: true,
+      locked: false,
+      color: lc.type === "image" ? "#ff9800" : LAYER_COLORS[id % LAYER_COLORS.length],
       textColor: lc.textColor,
+      opacity: lc.opacity,
+      imageSrc: lc.imageSrc,
+      opaqueRanges: lc.opaqueRanges.map((r) => ({ ...r })),
     });
-    layer.name = lc.name + " copy";
-    newSelected.add(layer.id);
+    newSelected.add(id);
   });
 
-  useProjectStore.setState({ selectedLayerIds: newSelected });
-  setStatus(`${clipboard.length}개 레이어 붙여넣기됨`);
+  useProjectStore.setState({
+    layers: [...state.layers, ...newLayers],
+    nextLayerId: nextId,
+    activeLayerId: newLayers[newLayers.length - 1].id,
+    selectedLayerIds: newSelected,
+  });
+  setStatus(`${clipboard.length}${t("layer.pasted")}`);
 }
 
 // ── Document Copy/Paste ──
 
 function copyDocument() {
+  useProjectStore.getState().saveCurrentDocState();
   const store = useProjectStore.getState();
-  store.saveCurrentDocState();
   const doc = store.project.documents.find(
     (d) => d.id === store.project.activeDocId
   );
   if (!doc) return;
   const clip = JSON.parse(JSON.stringify(doc));
   delete clip.id;
-  useEditorStore.getState().setDocClipboard(clip);
-  setStatus(`문서 "${doc.name}" 복사됨`);
+  useProjectStore.getState().setDocClipboard(clip);
+  setStatus(`${t("status.docCopied")}: ${doc.name}`);
 }
 
 function pasteDocument() {
-  const clip = useEditorStore.getState().docClipboard as any;
+  const clip = useProjectStore.getState().docClipboard as any;
   if (!clip) return;
 
   const store = useProjectStore.getState();

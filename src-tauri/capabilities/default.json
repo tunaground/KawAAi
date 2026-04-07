@@ -6,6 +6,11 @@
   "windows": ["main", "preview"],
   "permissions": [
     "core:default",
+    "core:window:default",
+    "core:window:allow-set-size",
+    "core:window:allow-set-position",
+    "core:window:allow-outer-position",
+    "core:window:allow-outer-size",
     "opener:default",
     "dialog:default",
     "core:event:default",

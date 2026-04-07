@@ -1,6 +1,6 @@
-import { useRef, useCallback, useState } from "react";
+import { memo, useRef, useCallback, useState, useMemo } from "react";
 import { useProjectStore } from "../../stores/projectStore";
-import { useEditorStore } from "../../stores/editorStore";
+import { saveUndoSnapshot } from "../../stores/projectStore";
 import { getDotString } from "../../lib/dotInput";
 import { measureString, LAYER_PADDING, LINE_HEIGHT } from "../../lib/fontMetrics";
 import type { Layer, OpaqueRange } from "../../types/project";
@@ -11,17 +11,16 @@ interface LayerBoxProps {
   zIndex: number;
 }
 
-export function LayerBox({ layer, zIndex }: LayerBoxProps) {
+export const LayerBox = memo(function LayerBox({ layer, zIndex }: LayerBoxProps) {
   const activeLayerId = useProjectStore((s) => s.activeLayerId);
   const selectedLayerIds = useProjectStore((s) => s.selectedLayerIds);
   const setActiveLayer = useProjectStore((s) => s.setActiveLayer);
   const updateLayer = useProjectStore((s) => s.updateLayer);
-  const viewSettings = useProjectStore((s) => s.viewSettings);
+  const charGridEnabled = useProjectStore((s) => s.viewSettings.charGridEnabled);
 
-  const setDragState = useEditorStore((s) => s.setDragState);
-  const setIsDraggingLayer = useEditorStore((s) => s.setIsDraggingLayer);
-  const pushUndo = useEditorStore((s) => s.pushUndo);
-  const editorMode = useEditorStore((s) => s.editorMode);
+  const setDragState = useProjectStore((s) => s.setDragState);
+  const setIsDraggingLayer = useProjectStore((s) => s.setIsDraggingLayer);
+  const editorMode = useProjectStore((s) => s.editorMode);
 
   const isActive = layer.id === activeLayerId;
   const isSelected = selectedLayerIds.has(layer.id);
@@ -29,6 +28,8 @@ export function LayerBox({ layer, zIndex }: LayerBoxProps) {
 
   // 도트 입력 상태
   const dotRef = useRef({ index: 0, startPos: -1, currentLen: 0 });
+  // 포커스 세션당 undo 스냅샷 1회만 저장
+  const undoSavedRef = useRef(false);
 
   // ── 채색 드래그 ──
   const [opaqueDragRect, setOpaqueDragRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
@@ -95,15 +96,9 @@ export function LayerBox({ layer, zIndex }: LayerBoxProps) {
       if (newRanges.length === 0) return;
 
       // undo
-      const state = useProjectStore.getState();
-      pushUndo({
-        layers: state.layers.map(l => ({ ...l })),
-        activeLayerId: state.activeLayerId,
-        selectedLayerIds: [...state.selectedLayerIds],
-        nextLayerId: state.nextLayerId,
-      });
+      saveUndoSnapshot();
 
-      const mode = useEditorStore.getState().editorMode;
+      const mode = useProjectStore.getState().editorMode;
       if (mode === "opaquePaint") {
         const merged = mergeOpaqueRanges([...currentLayer.opaqueRanges, ...newRanges]);
         updateLayer(layer.id, { opaqueRanges: merged });
@@ -115,7 +110,7 @@ export function LayerBox({ layer, zIndex }: LayerBoxProps) {
 
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
-  }, [isActive, isOpaqueMode, layer.id, layer.type, updateLayer, pushUndo]);
+  }, [isActive, isOpaqueMode, layer.id, layer.type, updateLayer]);
 
   const startDrag = useCallback(
     (e: React.MouseEvent, type: "move" | "resize") => {
@@ -124,13 +119,7 @@ export function LayerBox({ layer, zIndex }: LayerBoxProps) {
       e.stopPropagation();
 
       // undo snapshot
-      const state = useProjectStore.getState();
-      pushUndo({
-        layers: state.layers.map((l) => ({ ...l })),
-        activeLayerId: state.activeLayerId,
-        selectedLayerIds: [...state.selectedLayerIds],
-        nextLayerId: state.nextLayerId,
-      });
+      saveUndoSnapshot();
 
       setActiveLayer(layer.id);
       if (type === "move") setIsDraggingLayer(true);
@@ -145,11 +134,15 @@ export function LayerBox({ layer, zIndex }: LayerBoxProps) {
         origH: layer.h,
       });
     },
-    [layer, setActiveLayer, setDragState, setIsDraggingLayer, pushUndo]
+    [layer, setActiveLayer, setDragState, setIsDraggingLayer]
   );
 
   const handleInput = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      if (!undoSavedRef.current) {
+        saveUndoSnapshot();
+        undoSavedRef.current = true;
+      }
       updateLayer(layer.id, { text: e.target.value });
     },
     [layer.id, updateLayer]
@@ -158,8 +151,21 @@ export function LayerBox({ layer, zIndex }: LayerBoxProps) {
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       const ta = e.currentTarget;
+      const mod = e.ctrlKey || e.metaKey;
+
+      // Ctrl+V/X: 붙여넣기/잘라내기 전에 undo 스냅샷 저장
+      if (mod && (e.key === "v" || e.key === "x")) {
+        saveUndoSnapshot();
+        undoSavedRef.current = true;
+        return; // 브라우저 기본 동작에 맡김
+      }
+
       if (e.key === " ") {
         e.preventDefault();
+        if (!undoSavedRef.current) {
+          saveUndoSnapshot();
+          undoSavedRef.current = true;
+        }
         const dot = dotRef.current;
         const curPos = ta.selectionStart;
 
@@ -198,12 +204,10 @@ export function LayerBox({ layer, zIndex }: LayerBoxProps) {
     .join(" ");
 
   // 채색 영역 표시용: 문자별 opaqueRange 체크
-  const renderDisplay = () => {
+  const showOpaque = isOpaqueMode && isActive;
+  const displayContent = useMemo(() => {
     if (layer.type !== "text") return null;
-    const showOpaque = isOpaqueMode && isActive;
-    const showCharGrid = viewSettings.charGridEnabled;
-
-    if (!showOpaque && !showCharGrid) return layer.text;
+    if (!showOpaque && !charGridEnabled) return layer.text;
 
     const lines = layer.text.split("\n");
     const result: React.ReactNode[] = [];
@@ -215,7 +219,7 @@ export function LayerBox({ layer, zIndex }: LayerBoxProps) {
         let bg = "";
         if (showOpaque && isCharInOpaqueRanges(lineIdx, col, layer.opaqueRanges)) {
           bg = "rgba(255, 230, 0, 0.5)";
-        } else if (showCharGrid) {
+        } else if (charGridEnabled) {
           bg = keyIdx % 2 === 0 ? "rgba(255,0,0,0.2)" : "rgba(0,100,255,0.2)";
         }
         if (bg) {
@@ -229,7 +233,7 @@ export function LayerBox({ layer, zIndex }: LayerBoxProps) {
     });
 
     return result;
-  };
+  }, [layer.type, layer.text, layer.opaqueRanges, showOpaque, charGridEnabled]);
 
   return (
     <div
@@ -276,7 +280,7 @@ export function LayerBox({ layer, zIndex }: LayerBoxProps) {
             className={styles.display}
             style={{ color: layer.textColor }}
           >
-            {renderDisplay()}
+            {displayContent}
           </div>
           {/* 채색모드에서는 textarea 비활성 (드래그가 textarea에 먹히지 않도록) */}
           {!isOpaqueMode && (
@@ -285,7 +289,8 @@ export function LayerBox({ layer, zIndex }: LayerBoxProps) {
               value={layer.text}
               onChange={handleInput}
               onKeyDown={handleKeyDown}
-              onFocus={() => setActiveLayer(layer.id)}
+              onFocus={() => { undoSavedRef.current = false; setActiveLayer(layer.id); }}
+              onBlur={() => { undoSavedRef.current = false; }}
               spellCheck={false}
               style={{ caretColor: layer.textColor }}
               readOnly={layer.locked}
@@ -313,7 +318,7 @@ export function LayerBox({ layer, zIndex }: LayerBoxProps) {
       )}
     </div>
   );
-}
+});
 
 // ── 헬퍼 함수 ──
 

@@ -1,6 +1,8 @@
-import { useState, useRef } from "react";
+import { memo, useState, useRef } from "react";
 import { GripVertical, Eye, EyeOff, Lock, Unlock, Trash2 } from "lucide-react";
 import { useProjectStore } from "../../stores/projectStore";
+import { saveUndoSnapshot } from "../../stores/projectStore";
+import { useI18n } from "../../i18n";
 import type { Layer } from "../../types/project";
 import styles from "./LayerItem.module.css";
 
@@ -8,7 +10,8 @@ interface LayerItemProps {
   layer: Layer;
 }
 
-export function LayerItem({ layer }: LayerItemProps) {
+export const LayerItem = memo(function LayerItem({ layer }: LayerItemProps) {
+  const t = useI18n((s) => s.t);
   const activeLayerId = useProjectStore((s) => s.activeLayerId);
   const selectedLayerIds = useProjectStore((s) => s.selectedLayerIds);
   const setActiveLayer = useProjectStore((s) => s.setActiveLayer);
@@ -43,7 +46,7 @@ export function LayerItem({ layer }: LayerItemProps) {
 
   const commitRename = () => {
     const val = inputRef.current?.value.trim();
-    if (val) updateLayer(layer.id, { name: val });
+    if (val) { saveUndoSnapshot(); updateLayer(layer.id, { name: val }); }
     setEditing(false);
   };
 
@@ -62,9 +65,10 @@ export function LayerItem({ layer }: LayerItemProps) {
         type="color"
         className={styles.colorSwatch}
         value={layer.textColor}
+        onFocus={() => saveUndoSnapshot()}
         onChange={(e) => updateLayer(layer.id, { textColor: e.target.value })}
         onMouseDown={(e) => e.stopPropagation()}
-        title="텍스트 색상"
+        title={t("layer.textColor")}
       />
 
       {editing ? (
@@ -88,9 +92,9 @@ export function LayerItem({ layer }: LayerItemProps) {
         data-action="lock"
         onMouseDown={(e) => {
           e.stopPropagation();
-          updateLayer(layer.id, { locked: !layer.locked });
+          saveUndoSnapshot(); updateLayer(layer.id, { locked: !layer.locked });
         }}
-        title="잠금"
+        title={t("layer.lock")}
       >
         {layer.locked ? <Lock size={11} /> : <Unlock size={11} />}
       </button>
@@ -100,9 +104,9 @@ export function LayerItem({ layer }: LayerItemProps) {
         data-action="visibility"
         onMouseDown={(e) => {
           e.stopPropagation();
-          updateLayer(layer.id, { visible: !layer.visible });
+          saveUndoSnapshot(); updateLayer(layer.id, { visible: !layer.visible });
         }}
-        title="가시성"
+        title={t("layer.visible")}
       >
         {layer.visible ? <Eye size={11} /> : <EyeOff size={11} />}
       </button>
@@ -112,12 +116,12 @@ export function LayerItem({ layer }: LayerItemProps) {
         data-action="delete"
         onMouseDown={(e) => {
           e.stopPropagation();
-          removeLayer(layer.id);
+          saveUndoSnapshot(); removeLayer(layer.id);
         }}
-        title="삭제"
+        title={t("layer.delete")}
       >
         <Trash2 size={11} />
       </button>
     </div>
   );
-}
+});

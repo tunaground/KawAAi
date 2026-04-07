@@ -7,7 +7,7 @@ import { useProjectStore } from "../../stores/projectStore";
 import { useConfigStore } from "../../stores/configStore";
 import { compositeLayers } from "../../lib/compositor";
 import { useI18n } from "../../i18n";
-import { setStatus } from "../../stores/statusStore";
+import { setStatus } from "../../stores/projectStore";
 import styles from "./PreviewPanel.module.css";
 
 // 별도 창 참조
@@ -15,7 +15,10 @@ let detachedWindow: any = null;
 
 export const PreviewPanel = forwardRef<HTMLDivElement>(function PreviewPanel(_props, ref) {
   const layers = useProjectStore((s) => s.layers);
-  const project = useProjectStore((s) => s.project);
+  const activeDocName = useProjectStore((s) => {
+    const doc = s.project.documents.find(d => d.id === s.project.activeDocId);
+    return doc?.name ?? "export";
+  });
   const t = useI18n((s) => s.t);
   const previewMode = useConfigStore((s) => s.config.previewMode);
   const setPreviewMode = useConfigStore((s) => s.setPreviewMode);
@@ -27,15 +30,17 @@ export const PreviewPanel = forwardRef<HTMLDivElement>(function PreviewPanel(_pr
   const isDetached = previewMode === "detached";
 
   useEffect(() => {
-    const lines = compositeLayers(layers);
-    const text = lines.join("\n");
-    setCompositeText(text);
-    compositeRef.current = text;
+    const timer = setTimeout(() => {
+      const lines = compositeLayers(layers);
+      const text = lines.join("\n");
+      setCompositeText(text);
+      compositeRef.current = text;
 
-    // detached 모드면 별도 창에 이벤트 전송
-    if (isDetached && detachedWindow) {
-      emitToPreview(text);
-    }
+      if (isDetached && detachedWindow) {
+        emitToPreview(text);
+      }
+    }, 200);
+    return () => clearTimeout(timer);
   }, [layers, isDetached]);
 
   const handleCopy = () => {
@@ -44,8 +49,7 @@ export const PreviewPanel = forwardRef<HTMLDivElement>(function PreviewPanel(_pr
   };
 
   const handleExport = async () => {
-    const activeDoc = project.documents.find(d => d.id === project.activeDocId);
-    const docName = activeDoc?.name ?? "export";
+    const docName = activeDocName;
     const filename = `${docName}.txt`;
 
     try {
@@ -57,7 +61,7 @@ export const PreviewPanel = forwardRef<HTMLDivElement>(function PreviewPanel(_pr
       });
       if (!path) return;
       await invoke("export_text", { path, content: compositeText });
-      setStatus(`텍스트 익스포트됨: ${path}`);
+      setStatus(`${t("status.textExported")}: ${path}`);
       return;
     } catch {}
 
@@ -70,7 +74,7 @@ export const PreviewPanel = forwardRef<HTMLDivElement>(function PreviewPanel(_pr
         const writable = await handle.createWritable();
         await writable.write(compositeText);
         await writable.close();
-        setStatus(`텍스트 익스포트됨: ${handle.name}`);
+        setStatus(`${t("status.textExported")}: ${handle.name}`);
         return;
       } catch (e: any) {
         if (e.name === "AbortError") return;
@@ -196,7 +200,5 @@ async function emitToPreview(text: string) {
   try {
     const { emitTo } = await import("@tauri-apps/api/event");
     await emitTo("preview", "preview-update", text);
-  } catch (e) {
-    console.error("emitToPreview:", e);
-  }
+  } catch {}
 }

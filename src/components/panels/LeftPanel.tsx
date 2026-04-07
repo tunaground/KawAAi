@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, forwardRef } from "react";
 import { ChevronDown, Plus, Image } from "lucide-react";
-import { useProjectStore } from "../../stores/projectStore";
-import { useEditorStore } from "../../stores/editorStore";
+import { useProjectStore, saveUndoSnapshot } from "../../stores/projectStore";
+
 import { useI18n } from "../../i18n";
 import { LayerItem } from "./LayerItem";
 import { PaletteSection } from "./PaletteSection";
@@ -20,10 +20,10 @@ export const LeftPanel = forwardRef<HTMLDivElement>(function LeftPanel(_props, r
   const moveLayerOrder = useProjectStore((s) => s.moveLayerOrder);
   const createLayer = useProjectStore((s) => s.createLayer);
   const t = useI18n((s) => s.t);
-  const pushUndo = useEditorStore((s) => s.pushUndo);
 
   const layerListRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ layerId: number } | null>(null);
+  const dragItemsCache = useRef<{ id: number; el: HTMLElement; top: number; bottom: number; midY: number }[]>([]);
 
   const toggleSection = (key: keyof typeof sectionsCollapsed) => {
     setSectionsCollapsed((s) => ({ ...s, [key]: !s[key] }));
@@ -49,11 +49,23 @@ export const LeftPanel = forwardRef<HTMLDivElement>(function LeftPanel(_props, r
       const layerId = parseInt(item.dataset.layerId!);
       dragRef.current = { layerId };
 
+      // 아이템 위치 캐시 (드래그 중 위치 변경 없으므로 한 번만)
+      const items = listEl.querySelectorAll(`[data-layer-id]`);
+      dragItemsCache.current = Array.from(items).map((el) => {
+        const rect = el.getBoundingClientRect();
+        return {
+          id: parseInt((el as HTMLElement).dataset.layerId!),
+          el: el as HTMLElement,
+          top: rect.top,
+          bottom: rect.bottom,
+          midY: rect.top + rect.height / 2,
+        };
+      });
+
       // 드래그 대상 흐리게
       const store = useProjectStore.getState();
       const moveIds = store.selectedLayerIds.has(layerId) ? store.selectedLayerIds : new Set([layerId]);
-      listEl.querySelectorAll(`[data-layer-id]`).forEach((el) => {
-        const id = parseInt((el as HTMLElement).dataset.layerId!);
+      dragItemsCache.current.forEach(({ id, el }) => {
         if (moveIds.has(id)) el.classList.add(layerItemStyles.draggingItem);
       });
     };
@@ -61,23 +73,18 @@ export const LeftPanel = forwardRef<HTMLDivElement>(function LeftPanel(_props, r
     const onMouseMove = (e: MouseEvent) => {
       if (!dragRef.current) return;
 
-      // 표시 초기화
-      listEl.querySelectorAll(`.${layerItemStyles.dragOverAbove}, .${layerItemStyles.dragOverBelow}`).forEach((el) => {
-        el.classList.remove(layerItemStyles.dragOverAbove, layerItemStyles.dragOverBelow);
-      });
+      const cached = dragItemsCache.current;
+      for (const item of cached) {
+        item.el.classList.remove(layerItemStyles.dragOverAbove, layerItemStyles.dragOverBelow);
+      }
 
-      // 호버 대상 찾기
-      const items = listEl.querySelectorAll(`[data-layer-id]`);
-      for (const item of items) {
-        const id = parseInt((item as HTMLElement).dataset.layerId!);
-        if (id === dragRef.current.layerId) continue;
-        const rect = item.getBoundingClientRect();
-        if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
-          const midY = rect.top + rect.height / 2;
-          if (e.clientY < midY) {
-            item.classList.add(layerItemStyles.dragOverAbove);
+      for (const item of cached) {
+        if (item.id === dragRef.current.layerId) continue;
+        if (e.clientY >= item.top && e.clientY <= item.bottom) {
+          if (e.clientY < item.midY) {
+            item.el.classList.add(layerItemStyles.dragOverAbove);
           } else {
-            item.classList.add(layerItemStyles.dragOverBelow);
+            item.el.classList.add(layerItemStyles.dragOverBelow);
           }
           break;
         }
@@ -87,15 +94,19 @@ export const LeftPanel = forwardRef<HTMLDivElement>(function LeftPanel(_props, r
     const onMouseUp = () => {
       if (!dragRef.current) return;
 
+      const cached = dragItemsCache.current;
       // 흐림 해제
-      listEl.querySelectorAll(`.${layerItemStyles.draggingItem}`).forEach((el) => {
-        el.classList.remove(layerItemStyles.draggingItem);
-      });
+      cached.forEach(({ el }) => el.classList.remove(layerItemStyles.draggingItem));
 
       // 드롭 대상 찾기
-      const target = listEl.querySelector(
-        `.${layerItemStyles.dragOverAbove}, .${layerItemStyles.dragOverBelow}`
-      ) as HTMLElement | null;
+      let target: HTMLElement | null = null;
+      for (const item of cached) {
+        if (item.el.classList.contains(layerItemStyles.dragOverAbove) ||
+            item.el.classList.contains(layerItemStyles.dragOverBelow)) {
+          target = item.el;
+          break;
+        }
+      }
 
       if (target) {
         const isAbove = target.classList.contains(layerItemStyles.dragOverAbove);
@@ -109,12 +120,7 @@ export const LeftPanel = forwardRef<HTMLDivElement>(function LeftPanel(_props, r
 
         if (!moveIds.has(targetId)) {
           // undo snapshot
-          pushUndo({
-            layers: store.layers.map((l) => ({ ...l })),
-            activeLayerId: store.activeLayerId,
-            selectedLayerIds: [...store.selectedLayerIds],
-            nextLayerId: store.nextLayerId,
-          });
+          saveUndoSnapshot();
 
           // 리스트는 역순으로 표시되므로 above/below가 반전됨
           // 리스트에서 "above" = 시각적으로 위 = 배열에서 더 높은 index
@@ -123,6 +129,7 @@ export const LeftPanel = forwardRef<HTMLDivElement>(function LeftPanel(_props, r
       }
 
       dragRef.current = null;
+      dragItemsCache.current = [];
     };
 
     listEl.addEventListener("mousedown", onMouseDown);
@@ -133,7 +140,7 @@ export const LeftPanel = forwardRef<HTMLDivElement>(function LeftPanel(_props, r
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseup", onMouseUp);
     };
-  }, [moveLayerOrder, pushUndo]);
+  }, [moveLayerOrder]);
 
   return (
     <div className={styles.leftPanel} ref={ref}>

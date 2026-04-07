@@ -1,6 +1,22 @@
 import { create } from "zustand";
 import type { AppConfig, AutoSaveInterval } from "../types/config";
 import { DEFAULT_CONFIG } from "../types/config";
+import { ko } from "../i18n/ko";
+import { ja } from "../i18n/ja";
+import { en } from "../i18n/en";
+
+export type TranslationKey = keyof typeof ko;
+type Locale = "ko" | "ja" | "en";
+
+const translations: Record<Locale, Record<string, string>> = { ko, ja, en };
+
+function resolveLocale(locale: AppConfig["locale"]): Locale {
+  if (locale !== "system") return locale;
+  const lang = navigator.language.toLowerCase();
+  if (lang.startsWith("ko")) return "ko";
+  if (lang.startsWith("ja")) return "ja";
+  return "en";
+}
 
 const STORAGE_KEY = "KawAAi_config";
 
@@ -34,6 +50,8 @@ async function loadPersistedConfig(): Promise<AppConfig | null> {
 interface ConfigState {
   config: AppConfig;
   resolvedTheme: "light" | "dark";
+  resolvedLocale: Locale;
+  t: (key: TranslationKey) => string;
   initFromStorage: () => Promise<void>;
   setTheme: (mode: ThemeMode) => void;
   setLocale: (locale: AppConfig["locale"]) => void;
@@ -71,9 +89,13 @@ export const useConfigStore = create<ConfigState>((set, get) => {
       }
     });
 
+  const initialLocale = resolveLocale(DEFAULT_CONFIG.locale);
+
   return {
     config: DEFAULT_CONFIG,
     resolvedTheme: initialTheme,
+    resolvedLocale: initialLocale,
+    t: (key: TranslationKey) => translations[get().resolvedLocale][key] ?? key,
 
     initFromStorage: async () => {
       const loaded = await loadPersistedConfig();
@@ -82,7 +104,7 @@ export const useConfigStore = create<ConfigState>((set, get) => {
       const merged = { ...DEFAULT_CONFIG, ...loaded };
       const resolved = resolveTheme(merged.theme);
       applyTheme(resolved);
-      set({ config: merged, resolvedTheme: resolved });
+      set({ config: merged, resolvedTheme: resolved, resolvedLocale: resolveLocale(merged.locale) });
     },
 
     setTheme: (mode) => {
@@ -95,7 +117,7 @@ export const useConfigStore = create<ConfigState>((set, get) => {
 
     setLocale: (locale) => {
       const config = { ...get().config, locale };
-      set({ config });
+      set({ config, resolvedLocale: resolveLocale(locale) });
       persistConfig(config);
     },
 

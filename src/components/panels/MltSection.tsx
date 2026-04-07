@@ -1,7 +1,7 @@
 import { FolderOpen, RefreshCw } from "lucide-react";
 import { useMltStore } from "../../stores/mltStore";
 import { useProjectStore } from "../../stores/projectStore";
-import { setStatus } from "../../stores/statusStore";
+import { setStatus } from "../../stores/projectStore";
 import { getMeasureCtx, LAYER_PADDING, LINE_HEIGHT } from "../../lib/fontMetrics";
 import { useI18n } from "../../i18n";
 import styles from "./MltSection.module.css";
@@ -20,7 +20,7 @@ export function MltSection() {
   const dirPath = useMltStore((s) => s.dirPath);
 
   const createLayer = useProjectStore((s) => s.createLayer);
-  const layers = useProjectStore((s) => s.layers);
+  const layerCount = useProjectStore((s) => s.layers.length);
 
   const handleSelectDir = async () => {
     // Tauri 환경: plugin-dialog로 디렉토리 선택
@@ -31,7 +31,7 @@ export function MltSection() {
       await loadDir(dir as string);
       const count = useMltStore.getState().files.length;
       if (count === 0) { setStatus(t("mlt.noFiles")); return; }
-      setStatus(`MLT: ${count}${t("mlt.files")}`);
+      setStatus(`${t("mlt.loaded")}: ${count}${t("mlt.files")}`);
       return;
     } catch {
       // Tauri 미사용 — 브라우저 폴백
@@ -61,9 +61,9 @@ export function MltSection() {
         const file = await firstHandle.getFile();
         const content = await file.text();
         loadFileContent(0, content);
-        setStatus(`MLT: ${mltFiles.length}${t("mlt.files")}`);
+        setStatus(`${t("mlt.loaded")}: ${mltFiles.length}${t("mlt.files")}`);
       } catch (err: any) {
-        if (err.name !== "AbortError") console.error(err);
+        if (err.name === "AbortError") return;
       }
     } else {
       setStatus(t("mlt.dirNotSupported"));
@@ -93,9 +93,7 @@ export function MltSection() {
           const content = await file.text();
           loadFileContent(index, content);
         }
-      } catch (err) {
-        console.error(err);
-      }
+      } catch {}
     }
   };
 
@@ -104,7 +102,7 @@ export function MltSection() {
     if (!dir) return;
     await loadDir(dir);
     const count = useMltStore.getState().files.length;
-    setStatus(`MLT 새로고침: ${count}${t("mlt.files")}`);
+    setStatus(`${t("mlt.refreshed")}: ${count}${t("mlt.files")}`);
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -119,7 +117,7 @@ export function MltSection() {
     // 측정 오차 + 스냅 올림을 고려해서 여유를 줌
     const w = Math.ceil(maxW) + LAYER_PADDING * 2 + 2;
     const h = lines.length * LINE_HEIGHT + LAYER_PADDING * 2 + 2;
-    const offset = layers.length * 20;
+    const offset = layerCount * 20;
     const layer = createLayer(entry.text, 20 + offset, 20 + offset, w, h);
     layer.name = entry.name || "MLT";
     setStatus(`"${layer.name}" ${t("layer.insertedFromMlt")}`);
@@ -146,7 +144,7 @@ export function MltSection() {
           )}
         </select>
         {dirPath && (
-          <div className={styles.menuBtn} onClick={handleRefresh} title="새로고침">
+          <div className={styles.menuBtn} onClick={handleRefresh} title={t("mlt.refresh")}>
             <RefreshCw size={12} />
           </div>
         )}

@@ -1,16 +1,24 @@
 import { useProjectStore } from "../../stores/projectStore";
-import { useStatusStore } from "../../stores/statusStore";
 import styles from "./StatusBar.module.css";
 
 export function StatusBar() {
-  const activeLayerId = useProjectStore((s) => s.activeLayerId);
-  const layers = useProjectStore((s) => s.layers);
-  const selectedLayerIds = useProjectStore((s) => s.selectedLayerIds);
-  const message = useStatusStore((s) => s.message);
+  const message = useProjectStore((s) => s.statusMessage);
+  const selectedCount = useProjectStore((s) => s.selectedLayerIds.size);
+  const activeName = useProjectStore((s) => {
+    const layer = s.layers.find((l) => l.id === s.activeLayerId);
+    return layer?.name ?? null;
+  });
+  const activeX = useProjectStore((s) => {
+    const layer = s.layers.find((l) => l.id === s.activeLayerId);
+    return layer ? Math.round(layer.x) : 0;
+  });
+  const activeY = useProjectStore((s) => {
+    const layer = s.layers.find((l) => l.id === s.activeLayerId);
+    return layer?.y ?? 0;
+  });
 
-  const active = layers.find((l) => l.id === activeLayerId);
-  const info = active
-    ? `${active.name} (${Math.round(active.x)}, ${active.y}) [${selectedLayerIds.size} selected]`
+  const info = activeName
+    ? `${activeName} (${activeX}, ${activeY}) [${selectedCount} selected]`
     : "-";
 
   return (

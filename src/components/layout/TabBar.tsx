@@ -1,11 +1,11 @@
 import { useEffect, useState, useRef } from "react";
 import { Plus, X } from "lucide-react";
 import { useProjectStore } from "../../stores/projectStore";
-import { useEditorStore } from "../../stores/editorStore";
 import styles from "./TabBar.module.css";
 
 export function TabBar() {
-  const project = useProjectStore((s) => s.project);
+  const documents = useProjectStore((s) => s.project.documents);
+  const activeDocId = useProjectStore((s) => s.project.activeDocId);
   const switchDocument = useProjectStore((s) => s.switchDocument);
   const closeDocument = useProjectStore((s) => s.closeDocument);
   const createDocument = useProjectStore((s) => s.createDocument);
@@ -25,7 +25,7 @@ export function TabBar() {
   };
 
   // Tab bar focus tracking for document copy/paste
-  const setTabBarFocused = useEditorStore((s) => s.setTabBarFocused);
+  const setTabBarFocused = useProjectStore((s) => s.setTabBarFocused);
   useEffect(() => {
     const onMouseDown = (e: MouseEvent) => {
       const inTabBar = (e.target as HTMLElement)?.closest(`.${styles.tabBar}`);
@@ -37,12 +37,12 @@ export function TabBar() {
 
   return (
     <div className={styles.tabBar}>
-      {project.documents.map((doc) => (
+      {documents.map((doc) => (
         <div
           key={doc.id}
-          className={`${styles.tab} ${doc.id === project.activeDocId ? styles.active : ""}`}
+          className={`${styles.tab} ${doc.id === activeDocId ? styles.active : ""}`}
           onMouseDown={() => {
-            if (doc.id !== project.activeDocId) switchDocument(doc.id);
+            if (doc.id !== activeDocId) switchDocument(doc.id);
           }}
         >
           {editingDocId === doc.id ? (
@@ -73,7 +73,7 @@ export function TabBar() {
               {doc.name}
             </span>
           )}
-          {project.documents.length > 1 && (
+          {documents.length > 1 && (
             <span
               className={styles.tabClose}
               onMouseDown={(e) => {

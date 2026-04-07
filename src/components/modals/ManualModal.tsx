@@ -17,9 +17,13 @@ interface ManualModalProps {
 const I = ({ children }: { children: React.ReactNode }) => (
   <span className={styles.icon}>{children}</span>
 );
-const K = ({ children }: { children: React.ReactNode }) => (
-  <span className={styles.kbd}>{children}</span>
-);
+const isMac = navigator.platform.toUpperCase().includes("MAC") || navigator.userAgent.includes("Mac");
+const K = ({ children }: { children: React.ReactNode }) => {
+  const text = typeof children === "string" && isMac
+    ? children.replace(/Ctrl/g, "⌘").replace(/Alt/g, "⌥").replace(/Shift/g, "⇧")
+    : children;
+  return <span className={styles.kbd}>{text}</span>;
+};
 
 export function ManualModal({ open, onClose }: ManualModalProps) {
   const locale = useI18n((s) => s.locale);
@@ -81,6 +85,7 @@ function ManualKo() {
       <ul>
         <li><K>Ctrl+N</K> — 새 문서 추가</li>
         <li><K>Ctrl+W</K> — 현재 문서 닫기 (최소 1개 유지)</li>
+        <li><K>Ctrl+Shift+T</K> — 닫힌 문서 복원</li>
         <li><strong>더블클릭</strong> — 문서 이름 변경</li>
         <li>탭 클릭 후 <K>Ctrl+C</K>/<K>Ctrl+V</K> — 문서 복사/붙여넣기</li>
       </ul>
@@ -196,6 +201,7 @@ function ManualKo() {
         <tbody>
           <tr><td><K>Ctrl+N</K></td><td>새 문서</td></tr>
           <tr><td><K>Ctrl+W</K></td><td>문서 닫기</td></tr>
+          <tr><td><K>Ctrl+Shift+T</K></td><td>닫힌 문서 복원</td></tr>
           <tr><td><K>Ctrl+O</K></td><td>열기</td></tr>
           <tr><td><K>Ctrl+S</K></td><td>저장</td></tr>
           <tr><td><K>Ctrl+Shift+S</K></td><td>다른 이름으로 저장</td></tr>
@@ -273,6 +279,7 @@ function ManualJa() {
         <tbody>
           <tr><td><K>Ctrl+N</K></td><td>新規ドキュメント</td></tr>
           <tr><td><K>Ctrl+W</K></td><td>ドキュメントを閉じる</td></tr>
+          <tr><td><K>Ctrl+Shift+T</K></td><td>閉じたドキュメントを復元</td></tr>
           <tr><td><K>Ctrl+O</K></td><td>開く</td></tr>
           <tr><td><K>Ctrl+S</K></td><td>保存</td></tr>
           <tr><td><K>Ctrl+Z</K></td><td>元に戻す</td></tr>
@@ -349,6 +356,7 @@ function ManualEn() {
         <tbody>
           <tr><td><K>Ctrl+N</K></td><td>New document</td></tr>
           <tr><td><K>Ctrl+W</K></td><td>Close document</td></tr>
+          <tr><td><K>Ctrl+Shift+T</K></td><td>Reopen closed document</td></tr>
           <tr><td><K>Ctrl+O</K></td><td>Open</td></tr>
           <tr><td><K>Ctrl+S</K></td><td>Save</td></tr>
           <tr><td><K>Ctrl+Z</K></td><td>Undo</td></tr>

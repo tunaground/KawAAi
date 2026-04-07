@@ -3,8 +3,7 @@ import {
   Grid3x3, LetterText, Settings, Paintbrush, Eraser, X, BookOpen,
 } from "lucide-react";
 import { useProjectStore } from "../../stores/projectStore";
-import { useEditorStore, type EditorMode } from "../../stores/editorStore";
-import { useStatusStore } from "../../stores/statusStore";
+import { type EditorMode } from "../../stores/projectStore";
 import { useI18n } from "../../i18n";
 import styles from "./Header.module.css";
 
@@ -12,20 +11,21 @@ interface HeaderProps {
   onOpenQuickEdit: () => void;
   onOpenSettings: () => void;
   onSave: () => void;
-  onSaveAs: () => void;
   onOpen: () => void;
   onMerge: () => void;
   onOpenManual: () => void;
 }
 
-export function Header({ onOpenQuickEdit, onOpenSettings, onSave, onSaveAs: _onSaveAs, onOpen, onMerge, onOpenManual }: HeaderProps) {
-  const viewSettings = useProjectStore((s) => s.viewSettings);
+export function Header({ onOpenQuickEdit, onOpenSettings, onSave, onOpen, onMerge, onOpenManual }: HeaderProps) {
+  const snapEnabled = useProjectStore((s) => s.viewSettings.snapEnabled);
+  const gridVisible = useProjectStore((s) => s.viewSettings.gridVisible);
+  const charGridEnabled = useProjectStore((s) => s.viewSettings.charGridEnabled);
   const setViewSetting = useProjectStore((s) => s.setViewSetting);
   const t = useI18n((s) => s.t);
-  const editorMode = useEditorStore((s) => s.editorMode);
-  const setEditorMode = useEditorStore((s) => s.setEditorMode);
-  const projectPath = useStatusStore((s) => s.projectPath);
-  const lastSavedAt = useStatusStore((s) => s.lastSavedAt);
+  const editorMode = useProjectStore((s) => s.editorMode);
+  const setEditorMode = useProjectStore((s) => s.setEditorMode);
+  const projectPath = useProjectStore((s) => s.projectPath);
+  const lastSavedAt = useProjectStore((s) => s.lastSavedAt);
 
   const toggleMode = (mode: EditorMode) => {
     setEditorMode(editorMode === mode ? "normal" : mode);
@@ -37,10 +37,10 @@ export function Header({ onOpenQuickEdit, onOpenSettings, onSave, onSaveAs: _onS
 
       <div className={styles.toolbar}>
         {/* 파일 */}
-        <button className={styles.btn} onClick={onOpen} title="열기 (Ctrl+O)">
+        <button className={styles.btn} onClick={onOpen} title={t("header.open")}>
           <FolderOpen size={16} />
         </button>
-        <button className={styles.btn} onClick={onSave} title="저장 (Ctrl+S)">
+        <button className={styles.btn} onClick={onSave} title={t("header.save")}>
           <Save size={16} />
         </button>
 
@@ -85,22 +85,22 @@ export function Header({ onOpenQuickEdit, onOpenSettings, onSave, onSaveAs: _onS
 
         {/* 뷰 설정 */}
         <button
-          className={`${styles.btn} ${viewSettings.snapEnabled ? styles.active : ""}`}
-          onClick={() => setViewSetting("snapEnabled", !viewSettings.snapEnabled)}
+          className={`${styles.btn} ${snapEnabled ? styles.active : ""}`}
+          onClick={() => setViewSetting("snapEnabled", !snapEnabled)}
           title={t("header.snap")}
         >
           <Magnet size={16} />
         </button>
         <button
-          className={`${styles.btn} ${viewSettings.gridVisible ? styles.active : ""}`}
-          onClick={() => setViewSetting("gridVisible", !viewSettings.gridVisible)}
+          className={`${styles.btn} ${gridVisible ? styles.active : ""}`}
+          onClick={() => setViewSetting("gridVisible", !gridVisible)}
           title={t("header.grid")}
         >
           <Grid3x3 size={16} />
         </button>
         <button
-          className={`${styles.btn} ${viewSettings.charGridEnabled ? styles.active : ""}`}
-          onClick={() => setViewSetting("charGridEnabled", !viewSettings.charGridEnabled)}
+          className={`${styles.btn} ${charGridEnabled ? styles.active : ""}`}
+          onClick={() => setViewSetting("charGridEnabled", !charGridEnabled)}
           title={t("header.charGrid")}
         >
           <LetterText size={16} />
@@ -108,7 +108,7 @@ export function Header({ onOpenQuickEdit, onOpenSettings, onSave, onSaveAs: _onS
 
         <div className={styles.separator} />
 
-        <button className={styles.btn} onClick={onOpenManual} title="매뉴얼">
+        <button className={styles.btn} onClick={onOpenManual} title={t("header.manual")}>
           <BookOpen size={16} />
         </button>
         <button className={styles.btn} onClick={onOpenSettings} title={t("settings.title")}>
@@ -120,10 +120,10 @@ export function Header({ onOpenQuickEdit, onOpenSettings, onSave, onSaveAs: _onS
         <span className={styles.filePath}>
           {projectPath
             ? projectPath.split("/").pop()?.split("\\").pop()
-            : "새 프로젝트"}
+            : t("status.newProject")}
         </span>
         {lastSavedAt && (
-          <span className={styles.savedAt}>저장: {lastSavedAt}</span>
+          <span className={styles.savedAt}>{t("status.saved")}: {lastSavedAt}</span>
         )}
       </div>
     </header>

@@ -2,6 +2,18 @@
 /** 자동 저장 간격 (초). 0 = 안함 */
 export type AutoSaveInterval = 0 | 30 | 60 | 180 | 300 | 600;
 
+export interface WindowLayout {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface PanelLayout {
+  leftPanelWidth: number;
+  previewPanelWidth: number;
+}
+
 export interface AppConfig {
   locale: "system" | "ko" | "ja" | "en";
   theme: "system" | "light" | "dark";
@@ -10,7 +22,9 @@ export interface AppConfig {
   mltDirPath: string;
   recentProjects: string[];
   previewMode: "right" | "bottom" | "detached";
-  previewWindow: { x: number; y: number; width: number; height: number } | null;
+  previewWindow: WindowLayout | null;
+  windowLayout: WindowLayout | null;
+  panelLayout: PanelLayout | null;
 }
 
 export const DEFAULT_CONFIG: AppConfig = {
@@ -22,4 +36,6 @@ export const DEFAULT_CONFIG: AppConfig = {
   recentProjects: [],
   previewMode: "right",
   previewWindow: null,
+  windowLayout: null,
+  panelLayout: null,
 };

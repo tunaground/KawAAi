@@ -22,4 +22,5 @@ export interface LayerClipboard {
   textColor: string;
   opacity: number;
   imageSrc: string;
+  opaqueRanges: import("./project").OpaqueRange[];
 }

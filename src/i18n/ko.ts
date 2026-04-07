@@ -1,5 +1,8 @@
 export const ko = {
   // Header
+  "header.open": "열기 (Ctrl+O)",
+  "header.save": "저장 (Ctrl+S)",
+  "header.manual": "매뉴얼",
   "header.merge": "레이어 병합",
   "header.quickEdit": "레이어 캔버스",
   "header.opaquePaint": "공백 채색",
@@ -30,6 +33,7 @@ export const ko = {
   "layer.pasted": "개 레이어 붙여넣기됨",
   "layer.merged": "개 레이어 병합됨",
   "layer.insertedFromMlt": "레이어로 삽입됨",
+  "layer.added": "레이어 추가됨",
 
   // Palette
   "palette.title": "팔레트",
@@ -44,6 +48,15 @@ export const ko = {
   "palette.deleteConfirm": "삭제?",
   "palette.exported": "익스포트됨",
   "palette.noActiveLayer": "활성 레이어 없음",
+  "palette.charInserted": "삽입됨",
+  "palette.charAdded": "캐릭터 추가됨",
+  "palette.charDeleted": "캐릭터 삭제됨",
+  "palette.added": "팔레트 추가됨",
+  "palette.deleted": "팔레트 삭제됨",
+  "palette.deletePalette": "팔레트 삭제",
+  "palette.imported": "임포트됨",
+  "palette.setExported": "팔레트세트 익스포트됨",
+  "palette.setImported": "팔레트세트 임포트됨",
 
   // MLT
   "mlt.title": "라이브러리 (MLT)",
@@ -53,6 +66,9 @@ export const ko = {
   "mlt.loadEmpty": "MLT 디렉토리를 불러오세요",
   "mlt.dirNotSupported": "이 브라우저에서는 디렉토리 선택을 지원하지 않습니다",
   "mlt.files": "개 파일",
+  "mlt.refresh": "새로고침",
+  "mlt.refreshed": "MLT 새로고침",
+  "mlt.loaded": "MLT",
 
   // Preview
   "preview.title": "합성 결과",
@@ -85,6 +101,12 @@ export const ko = {
   "settings.themeLight": "라이트",
   "settings.themeDark": "다크",
   "settings.autoSave": "자동 저장",
+  "settings.autoSaveOff": "안함",
+  "settings.autoSave30s": "30초",
+  "settings.autoSave1m": "1분",
+  "settings.autoSave3m": "3분",
+  "settings.autoSave5m": "5분",
+  "settings.autoSave10m": "10분",
   "settings.mltDir": "MLT 디렉토리",
 
   // Status
@@ -104,4 +126,12 @@ export const ko = {
   "status.detachedNotSupported": "별도 창은 Tauri 환경에서만 지원됩니다",
   "status.lastPalette": "마지막 팔레트는 삭제할 수 없습니다",
   "status.docPasted": "문서 붙여넣기됨",
+  "status.docReopened": "문서 복원됨",
+  "status.saved": "저장됨",
+  "status.loaded": "불러옴",
+  "status.autoSaved": "자동 저장됨",
+  "status.newDoc": "새 문서",
+  "status.newProject": "새 프로젝트",
+  "status.docCopied": "문서 복사됨",
+  "status.textExported": "텍스트 익스포트됨",
 };

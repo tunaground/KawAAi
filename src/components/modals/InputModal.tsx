@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { create } from "zustand";
+import { useI18n } from "../../i18n";
 import styles from "./InputModal.module.css";
 
 interface ModalRequest {
@@ -51,6 +52,7 @@ export function showConfirmModal(
 }
 
 export function InputModal() {
+  const t = useI18n((s) => s.t);
   const request = useModalStore((s) => s.request);
   const setRequest = useModalStore((s) => s.setRequest);
   const [value, setValue] = useState("");
@@ -59,7 +61,7 @@ export function InputModal() {
   useEffect(() => {
     if (request?.type === "input") {
       setValue(request.defaultValue ?? "");
-      setTimeout(() => inputRef.current?.select(), 50);
+      requestAnimationFrame(() => inputRef.current?.select());
     }
   }, [request]);
 
@@ -96,7 +98,7 @@ export function InputModal() {
             className={styles.btnCancel}
             onClick={() => close(request.type === "confirm" ? false : null)}
           >
-            취소
+            {t("modal.cancel")}
           </button>
           <button
             className={
@@ -106,7 +108,7 @@ export function InputModal() {
               close(request.type === "confirm" ? true : value)
             }
           >
-            {request.okLabel ?? "확인"}
+            {request.okLabel ?? t("modal.ok")}
           </button>
         </div>
       </div>

@@ -8,22 +8,21 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
-const AUTO_SAVE_OPTIONS: { value: AutoSaveInterval; label: string }[] = [
-  { value: 0, label: "안함" },
-  { value: 30, label: "30초" },
-  { value: 60, label: "1분" },
-  { value: 180, label: "3분" },
-  { value: 300, label: "5분" },
-  { value: 600, label: "10분" },
+const AUTO_SAVE_OPTIONS: { value: AutoSaveInterval; labelKey: string }[] = [
+  { value: 0, labelKey: "settings.autoSaveOff" },
+  { value: 30, labelKey: "settings.autoSave30s" },
+  { value: 60, labelKey: "settings.autoSave1m" },
+  { value: 180, labelKey: "settings.autoSave3m" },
+  { value: 300, labelKey: "settings.autoSave5m" },
+  { value: 600, labelKey: "settings.autoSave10m" },
 ];
 
 export function SettingsModal({ open, onClose }: SettingsModalProps) {
   const t = useI18n((s) => s.t);
   const locale = useI18n((s) => s.locale);
-  const setI18nLocale = useI18n((s) => s.setLocale);
   const config = useConfigStore((s) => s.config);
   const setTheme = useConfigStore((s) => s.setTheme);
-  const setConfigLocale = useConfigStore((s) => s.setLocale);
+  const setLocale = useConfigStore((s) => s.setLocale);
   const setAutoSaveInterval = useConfigStore((s) => s.setAutoSaveInterval);
 
   if (!open) return null;
@@ -40,8 +39,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
             value={locale}
             onChange={(e) => {
               const v = e.target.value as "ko" | "ja" | "en";
-              setI18nLocale(v);
-              setConfigLocale(v);
+              setLocale(v);
             }}
           >
             <option value="ko">한국어</option>
@@ -66,7 +64,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
         </div>
 
         <div className={styles.row}>
-          <label className={styles.label}>자동 저장</label>
+          <label className={styles.label}>{t("settings.autoSave")}</label>
           <select
             className={styles.select}
             value={config.autoSaveInterval}
@@ -76,7 +74,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
           >
             {AUTO_SAVE_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
-                {opt.label}
+                {t(opt.labelKey as any)}
               </option>
             ))}
           </select>

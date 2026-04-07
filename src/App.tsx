@@ -15,7 +15,7 @@ import { initSpaceWidths } from "./lib/compositor";
 import { useDragHandler } from "./hooks/useDragHandler";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useConfigStore } from "./stores/configStore";
-import { useI18n, t } from "./i18n";
+import { t } from "./i18n";
 import {
   saveProjectDialog,
   saveProjectToPath,
@@ -24,14 +24,12 @@ import {
   saveConfig,
 } from "./lib/fileIO";
 import type { ProjectFile } from "./types/project";
-import { setStatus, setProjectPath, markSaved } from "./stores/statusStore";
+import { setStatus, setProjectPath, markSaved } from "./stores/projectStore";
 import { mergeSelectedLayers } from "./lib/layerOps";
 import { usePaletteStore } from "./stores/paletteStore";
 import { useMltStore } from "./stores/mltStore";
 import { useAutoSave } from "./hooks/useAutoSave";
 
-// 현재 열려 있는 프로젝트 파일 경로
-let currentProjectPath: string | null = null;
 
 function App() {
   const project = useProjectStore((s) => s.project);
@@ -51,11 +49,12 @@ function App() {
     useProjectStore.getState().saveCurrentDocState();
     const proj = useProjectStore.getState().project;
 
-    if (currentProjectPath) {
+    const curPath = useProjectStore.getState().projectPath;
+    if (curPath) {
       try {
-        await saveProjectToPath(currentProjectPath, proj);
-        await saveRecentProject(currentProjectPath);
-        setStatus(`저장됨: ${currentProjectPath}`); markSaved(); setProjectPath(currentProjectPath);
+        await saveProjectToPath(curPath, proj);
+        await saveRecentProject(curPath);
+        setStatus(`${t("status.saved")}: ${curPath}`); markSaved();
       } catch {
         downloadJson(proj, `${proj.name}.aaproj`);
       }
@@ -63,9 +62,8 @@ function App() {
       try {
         const path = await saveProjectDialog(proj);
         if (path) {
-          currentProjectPath = path;
           await saveRecentProject(path);
-          setStatus(`저장됨: ${path}`);
+          setStatus(`${t("status.saved")}: ${path}`);
           markSaved();
           setProjectPath(path);
         }
@@ -79,13 +77,12 @@ function App() {
   const handleSaveAs = useCallback(async () => {
     useProjectStore.getState().saveCurrentDocState();
     const proj = useProjectStore.getState().project;
-    currentProjectPath = null;
+    setProjectPath(null);
     try {
       const path = await saveProjectDialog(proj);
       if (path) {
-        currentProjectPath = path;
         await saveRecentProject(path);
-        setStatus(`저장됨: ${path}`);
+        setStatus(`${t("status.saved")}: ${path}`);
         markSaved();
         setProjectPath(path);
       }
@@ -99,7 +96,6 @@ function App() {
     try {
       const result = await openProjectDialog();
       if (!result) return;
-      currentProjectPath = result.path;
       await saveRecentProject(result.path);
       const data = result.data;
       useProjectStore.setState({
@@ -110,7 +106,7 @@ function App() {
         nextLayerId: 0,
       });
       useProjectStore.getState().restoreDocState();
-      setStatus(`불러옴: ${result.path}`);
+      setStatus(`${t("status.loaded")}: ${result.path}`);
       setProjectPath(result.path);
     } catch {
       // Tauri 미사용 환경: file input 폴백
@@ -122,7 +118,7 @@ function App() {
         if (!file) return;
         const text = await file.text();
         const data = JSON.parse(text);
-        currentProjectPath = null;
+        setProjectPath(null);
         useProjectStore.setState({
           project: data,
           layers: [],
@@ -160,6 +156,14 @@ function App() {
           setStatus(t("status.docClosed"));
         }
       }
+      if (mod && e.shiftKey && e.key === "t") {
+        e.preventDefault();
+        const store = useProjectStore.getState();
+        if (store.closedDocStack.length > 0) {
+          store.reopenLastClosedDocument();
+          setStatus(t("status.docReopened"));
+        }
+      }
       if (mod && e.key === "n") {
         e.preventDefault();
         const store = useProjectStore.getState();
@@ -169,7 +173,7 @@ function App() {
           project: { ...useProjectStore.getState().project, activeDocId: doc.id },
         });
         store.restoreDocState();
-        setStatus(`새 문서: ${doc.name}`);
+        setStatus(`${t("status.newDoc")}: ${doc.name}`);
       }
     };
     document.addEventListener("keydown", handler);
@@ -190,11 +194,9 @@ function App() {
 
       // 앱 설정 로드 (언어, 테마 등)
       await useConfigStore.getState().initFromStorage();
-      // 저장된 locale을 i18n에 반영
-      const savedLocale = useConfigStore.getState().config.locale;
-      if (savedLocale && savedLocale !== "system") {
-        useI18n.getState().setLocale(savedLocale as "ko" | "ja" | "en");
-      }
+
+      // 윈도우 레이아웃 복원
+      await restoreWindowLayout();
 
       // 팔레트세트 로드
       await usePaletteStore.getState().initFromStorage();
@@ -212,6 +214,43 @@ function App() {
     init();
   }, []);
 
+  // 패널 레이아웃 복원 (DOM 렌더 후)
+  useEffect(() => {
+    if (project.documents.length === 0) return;
+    const layout = useConfigStore.getState().config.panelLayout;
+    if (!layout) return;
+    if (leftPanelRef.current && layout.leftPanelWidth > 0) {
+      leftPanelRef.current.style.width = layout.leftPanelWidth + "px";
+    }
+    if (previewPanelRef.current && layout.previewPanelWidth > 0) {
+      previewPanelRef.current.style.width = layout.previewPanelWidth + "px";
+    }
+  }, [project.documents.length > 0]);
+
+  // 윈도우/패널 레이아웃 변경 시 디바운스 저장
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const saveLayout = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        const panelLayout = {
+          leftPanelWidth: leftPanelRef.current?.offsetWidth ?? 0,
+          previewPanelWidth: previewPanelRef.current?.offsetWidth ?? 0,
+        };
+        useConfigStore.getState().updateConfig({ panelLayout });
+        saveWindowLayout();
+      }, 500);
+    };
+    window.addEventListener("resize", saveLayout);
+    // 패널 리사이즈는 mouseup 시 감지
+    document.addEventListener("mouseup", saveLayout);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("resize", saveLayout);
+      document.removeEventListener("mouseup", saveLayout);
+    };
+  }, []);
+
   if (project.documents.length === 0) {
     return (
       <div style={{ padding: "2rem", color: "var(--text-secondary)" }}>
@@ -226,7 +265,6 @@ function App() {
         onOpenQuickEdit={() => setQuickEditOpen(true)}
         onOpenSettings={() => setSettingsOpen(true)}
         onSave={handleSave}
-        onSaveAs={handleSaveAs}
         onOpen={handleOpen}
         onMerge={mergeSelectedLayers}
         onOpenManual={() => setManualOpen(true)}
@@ -308,7 +346,6 @@ async function tryRestoreLastProject(): Promise<boolean> {
     const data = await invoke<ProjectFile>("load_project", { path });
     if (!data || !data.documents || data.documents.length === 0) return false;
 
-    currentProjectPath = path;
     setProjectPath(path);
     useProjectStore.setState({
       project: data,
@@ -356,6 +393,37 @@ function downloadJson(data: object, filename: string) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/** 윈도우 위치/크기 복원 */
+async function restoreWindowLayout() {
+  const layout = useConfigStore.getState().config.windowLayout;
+  if (!layout) return;
+  try {
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    const { PhysicalPosition, PhysicalSize } = await import("@tauri-apps/api/dpi");
+    const win = getCurrentWindow();
+    await win.setSize(new PhysicalSize(layout.width, layout.height));
+    await win.setPosition(new PhysicalPosition(layout.x, layout.y));
+  } catch {}
+}
+
+/** 윈도우 위치/크기 저장 */
+async function saveWindowLayout() {
+  try {
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    const win = getCurrentWindow();
+    const pos = await win.outerPosition();
+    const size = await win.outerSize();
+    useConfigStore.getState().updateConfig({
+      windowLayout: {
+        x: pos.x,
+        y: pos.y,
+        width: size.width,
+        height: size.height,
+      },
+    });
+  } catch {}
 }
 
 export default App;
