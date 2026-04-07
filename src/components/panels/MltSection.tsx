@@ -190,9 +190,8 @@ export function MltSection() {
               onMouseLeave={() => setHoverPreview(null)}
             >
               <div className={styles.preview}>
-                {entry.text.split("\n").slice(0, 3).join("\n")}
+                {entry.text}
               </div>
-              <div className={styles.name}>{entry.name || `#${sec!.startIdx + i + 1}`}</div>
             </div>
           ))
         )}
