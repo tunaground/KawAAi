@@ -33,7 +33,7 @@ export function Header({ onOpenQuickEdit, onOpenSettings, onSave, onOpen, onMerg
 
   return (
     <header className={styles.header}>
-      <h1 className={styles.title}>KawAAi <span className={styles.version}>v0.1.0</span></h1>
+      <h1 className={styles.title}>KawAAi <span className={styles.version}>v0.2.0</span></h1>
 
       <div className={styles.toolbar}>
         {/* 파일 */}

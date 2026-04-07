@@ -1,6 +1,6 @@
 [package]
 name = "kawaai"
-version = "0.1.0"
+version = "0.2.0"
 description = "KawAAi - AA (Yaruo) Art Editor"
 authors = ["tunarider"]
 edition = "2021"
