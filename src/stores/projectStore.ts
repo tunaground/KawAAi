@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { ProjectFile, Document, Layer, ViewSettings } from "../types/project";
+import type { ProjectFile, Document, Layer, ViewSettings, Namespace } from "../types/project";
 import type { DragState, LayerClipboard } from "../types/editor";
 import { t } from "../i18n";
 
@@ -41,6 +41,14 @@ interface ProjectState {
   viewSettings: ViewSettings;
   canvasSize: { width: number; height: number };
   setCanvasSize: (size: { width: number; height: number }) => void;
+
+  // 네임스페이스 관리
+  createNamespace: (name?: string) => Namespace;
+  switchNamespace: (nsId: number) => void;
+  closeNamespace: (nsId: number) => void;
+  renameNamespace: (nsId: number, name: string) => void;
+  reorderNamespaces: (fromIndex: number, toIndex: number) => void;
+  moveDocToNamespace: (docId: number, nsId: number) => void;
 
   // 문서 관리
   createDocument: (name?: string) => Document;
@@ -94,18 +102,23 @@ interface ProjectState {
   pushRedo: (snapshot: UndoSnapshot) => void;
   clearUndoRedo: () => void;
 
-  // 닫힌 문서 복원
+  // 닫힌 문서/네임스페이스 복원
   closedDocStack: string[];
   reopenLastClosedDocument: () => void;
+  closedNsStack: string[];
+  reopenLastClosedNamespace: () => void;
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
   project: {
-    version: 1,
+    version: 2,
     name: "Untitled Project",
     documents: [],
     activeDocId: -1,
     nextDocId: 0,
+    namespaces: [],
+    activeNamespaceId: -1,
+    nextNamespaceId: 0,
   },
   layers: [],
   activeLayerId: null,
@@ -115,14 +128,122 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   canvasSize: { width: 600, height: 500 },
   setCanvasSize: (size) => set({ canvasSize: size }),
 
+  // ── 네임스페이스 관리 ──
+
+  createNamespace: (name = "Namespace") => {
+    const state = get();
+    const nsId = state.project.nextNamespaceId;
+    const docId = state.project.nextDocId;
+    const doc = createDefaultDoc(docId, "문서 1");
+    const ns: Namespace = { id: nsId, name, docIds: [docId] };
+    get().saveCurrentDocState();
+    set({
+      project: {
+        ...state.project,
+        namespaces: [...state.project.namespaces, ns],
+        documents: [...state.project.documents, doc],
+        nextNamespaceId: nsId + 1,
+        nextDocId: docId + 1,
+        activeNamespaceId: nsId,
+        activeDocId: docId,
+      },
+    });
+    get().restoreDocState();
+    return ns;
+  },
+
+  switchNamespace: (nsId) => {
+    get().saveCurrentDocState();
+    const state = get();
+    const ns = state.project.namespaces.find((n) => n.id === nsId);
+    if (!ns) return;
+    set({ project: { ...state.project, activeNamespaceId: nsId } });
+    if (ns.docIds.length > 0) {
+      const firstDocId = ns.docIds[0];
+      set({ project: { ...get().project, activeDocId: firstDocId } });
+      get().restoreDocState();
+    }
+  },
+
+  closeNamespace: (nsId) => {
+    const state = get();
+    if (state.project.namespaces.length <= 1) return;
+    const ns = state.project.namespaces.find((n) => n.id === nsId);
+    if (!ns) return;
+
+    // 현재 문서 상태를 먼저 저장
+    get().saveCurrentDocState();
+
+    // 닫힌 네임스페이스+문서를 스택에 보관 (saveCurrentDocState 후 최신 상태)
+    const closedDocs = get().project.documents.filter((d) => ns.docIds.includes(d.id));
+    const entry = JSON.stringify({ namespace: ns, documents: closedDocs });
+    const nsStack = [...get().closedNsStack, entry];
+    if (nsStack.length > 10) nsStack.shift();
+    set({ closedNsStack: nsStack });
+
+    // 내부 문서 삭제
+    const docs = state.project.documents.filter((d) => !ns.docIds.includes(d.id));
+    const namespaces = state.project.namespaces.filter((n) => n.id !== nsId);
+    let activeNsId = state.project.activeNamespaceId;
+    let activeDocId = state.project.activeDocId;
+    if (activeNsId === nsId) {
+      activeNsId = namespaces[0].id;
+      const newNs = namespaces[0];
+      activeDocId = newNs.docIds.length > 0 ? newNs.docIds[0] : -1;
+    }
+    set({ project: { ...state.project, documents: docs, namespaces, activeNamespaceId: activeNsId, activeDocId } });
+    if (state.project.activeNamespaceId === nsId) {
+      get().restoreDocState();
+    }
+  },
+
+  renameNamespace: (nsId, name) => {
+    const state = get();
+    const namespaces = state.project.namespaces.map((n) =>
+      n.id === nsId ? { ...n, name } : n
+    );
+    set({ project: { ...state.project, namespaces } });
+  },
+
+  reorderNamespaces: (fromIndex, toIndex) => {
+    const state = get();
+    const namespaces = [...state.project.namespaces];
+    const [moved] = namespaces.splice(fromIndex, 1);
+    namespaces.splice(toIndex, 0, moved);
+    set({ project: { ...state.project, namespaces } });
+  },
+
+  moveDocToNamespace: (docId, nsId) => {
+    const state = get();
+    // 원래 네임스페이스에 문서가 1개뿐이면 이동 거부
+    const sourceNs = state.project.namespaces.find((n) => n.docIds.includes(docId));
+    if (sourceNs && sourceNs.docIds.length <= 1) return;
+    const namespaces = state.project.namespaces.map((n) => ({
+      ...n,
+      docIds: n.docIds.filter((id) => id !== docId),
+    }));
+    const target = namespaces.find((n) => n.id === nsId);
+    if (target) target.docIds.push(docId);
+    set({ project: { ...state.project, namespaces } });
+  },
+
+  // ── 문서 관리 ──
+
   createDocument: (name = "새 문서") => {
     const state = get();
     const id = state.project.nextDocId;
     const doc = createDefaultDoc(id, name);
+    // 활성 네임스페이스에 문서 추가
+    const namespaces = state.project.namespaces.map((n) =>
+      n.id === state.project.activeNamespaceId
+        ? { ...n, docIds: [...n.docIds, id] }
+        : n
+    );
     set({
       project: {
         ...state.project,
         documents: [...state.project.documents, doc],
+        namespaces,
         nextDocId: id + 1,
       },
     });
@@ -140,6 +261,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   closeDocument: (docId) => {
     const state = get();
     if (state.project.documents.length <= 1) return;
+    // 네임스페이스에 마지막 문서면 닫기 거부
+    const ownerNs = state.project.namespaces.find((n) => n.docIds.includes(docId));
+    if (ownerNs && ownerNs.docIds.length <= 1) return;
 
     // 닫기 전 현재 문서 상태 저장
     get().saveCurrentDocState();
@@ -153,13 +277,25 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }
 
     const docs = state.project.documents.filter((d) => d.id !== docId);
+    const namespaces = state.project.namespaces.map((n) => ({
+      ...n,
+      docIds: n.docIds.filter((id) => id !== docId),
+    }));
     let activeDocId = state.project.activeDocId;
     if (activeDocId === docId) {
-      const idx = state.project.documents.findIndex((d) => d.id === docId);
-      const newIdx = Math.min(idx, docs.length - 1);
-      activeDocId = docs[newIdx].id;
+      // 같은 네임스페이스 내에서 왼쪽(이전) 문서 선택
+      const activeNs = namespaces.find((n) => n.id === state.project.activeNamespaceId);
+      if (activeNs && activeNs.docIds.length > 0) {
+        // 삭제 전 네임스페이스에서의 인덱스를 기준으로 왼쪽 문서 선택
+        const oldNs = state.project.namespaces.find((n) => n.id === state.project.activeNamespaceId);
+        const oldIdx = oldNs ? oldNs.docIds.indexOf(docId) : 0;
+        const newIdx = Math.max(0, Math.min(oldIdx - 1, activeNs.docIds.length - 1));
+        activeDocId = activeNs.docIds[newIdx];
+      } else {
+        activeDocId = docs[0]?.id ?? -1;
+      }
     }
-    set({ project: { ...state.project, documents: docs, activeDocId } });
+    set({ project: { ...state.project, documents: docs, namespaces, activeDocId } });
     if (state.project.activeDocId === docId) {
       get().restoreDocState();
     }
@@ -390,11 +526,41 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const doc: Document = JSON.parse(json);
     get().saveCurrentDocState();
     const state = get();
+    // 활성 네임스페이스에 문서 추가
+    const namespaces = state.project.namespaces.map((n) =>
+      n.id === state.project.activeNamespaceId
+        ? { ...n, docIds: [...n.docIds, doc.id] }
+        : n
+    );
     set({
       project: {
         ...state.project,
         documents: [...state.project.documents, doc],
+        namespaces,
         activeDocId: doc.id,
+      },
+    });
+    get().restoreDocState();
+  },
+
+  // 닫힌 네임스페이스 복원
+  closedNsStack: [],
+  reopenLastClosedNamespace: () => {
+    const stack = [...get().closedNsStack];
+    if (stack.length === 0) return;
+    const json = stack.pop()!;
+    set({ closedNsStack: stack });
+
+    const { namespace, documents: closedDocs } = JSON.parse(json) as { namespace: Namespace; documents: Document[] };
+    get().saveCurrentDocState();
+    const state = get();
+    set({
+      project: {
+        ...state.project,
+        namespaces: [...state.project.namespaces, namespace],
+        documents: [...state.project.documents, ...closedDocs],
+        activeNamespaceId: namespace.id,
+        activeDocId: namespace.docIds.length > 0 ? namespace.docIds[0] : state.project.activeDocId,
       },
     });
     get().restoreDocState();

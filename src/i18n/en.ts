@@ -1,7 +1,9 @@
 export const en = {
+  "header.newProject": "New Project (Ctrl+P)",
   "header.open": "Open (Ctrl+O)",
   "header.save": "Save (Ctrl+S)",
   "header.manual": "Manual",
+  "header.exportMLT": "Export MLT",
   "header.merge": "Merge Layers",
   "header.quickEdit": "Layer Canvas",
   "header.opaquePaint": "Opaque Paint",
@@ -117,11 +119,13 @@ export const en = {
   "status.lastPalette": "Cannot delete last palette",
   "status.docPasted": "Document pasted",
   "status.docReopened": "Document reopened",
+  "status.nsReopened": "Namespace reopened",
   "status.saved": "Saved",
   "status.loaded": "Loaded",
   "status.autoSaved": "Auto-saved",
   "status.newDoc": "New document",
   "status.newProject": "New project",
+  "confirm.newProject": "Create a new project?\nUnsaved changes will be lost.",
   "status.docCopied": "Document copied",
   "status.textExported": "Text exported",
 };

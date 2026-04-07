@@ -4,8 +4,17 @@ import { useProjectStore } from "../../stores/projectStore";
 import styles from "./TabBar.module.css";
 
 export function TabBar() {
-  const documents = useProjectStore((s) => s.project.documents);
+  const allDocuments = useProjectStore((s) => s.project.documents);
   const activeDocId = useProjectStore((s) => s.project.activeDocId);
+  const namespaces = useProjectStore((s) => s.project.namespaces);
+  const activeNamespaceId = useProjectStore((s) => s.project.activeNamespaceId);
+  const moveDocToNamespace = useProjectStore((s) => s.moveDocToNamespace);
+
+  // 활성 네임스페이스의 문서만 표시
+  const activeNs = namespaces.find((n) => n.id === activeNamespaceId);
+  const documents = activeNs
+    ? activeNs.docIds.map((id) => allDocuments.find((d) => d.id === id)).filter(Boolean) as typeof allDocuments
+    : allDocuments;
   const switchDocument = useProjectStore((s) => s.switchDocument);
   const closeDocument = useProjectStore((s) => s.closeDocument);
   const createDocument = useProjectStore((s) => s.createDocument);
@@ -19,6 +28,7 @@ export function TabBar() {
   // 드래그 상태
   const dragRef = useRef<{ docId: number; startX: number } | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [dragOverNsId, setDragOverNsId] = useState<number | null>(null);
 
   const handleAdd = () => {
     saveCurrentDocState();
@@ -46,6 +56,16 @@ export function TabBar() {
       if (!dragRef.current) return;
       if (Math.abs(e.clientX - dragRef.current.startX) < 5) return;
 
+      // 네임스페이스 바 위에 있는지 확인
+      const nsTab = (e.target as HTMLElement).closest("[data-ns-id]") as HTMLElement | null;
+      if (nsTab) {
+        setDragOverIndex(null);
+        setDragOverNsId(parseInt(nsTab.dataset.nsId!));
+        nsTab.classList.add("dropTarget");
+        return;
+      }
+      setDragOverNsId(null);
+
       const tabBar = document.querySelector(`.${styles.tabBar}`);
       if (!tabBar) return;
       const tabs = tabBar.querySelectorAll(`[data-doc-id]`);
@@ -60,16 +80,21 @@ export function TabBar() {
     };
 
     const onMouseUp = () => {
-      if (dragRef.current && dragOverIndex !== null) {
-        const fromIndex = documents.findIndex((d) => d.id === dragRef.current!.docId);
-        let toIndex = dragOverIndex;
-        if (fromIndex !== -1 && toIndex !== fromIndex && toIndex !== fromIndex + 1) {
-          if (toIndex > fromIndex) toIndex--;
-          reorderDocuments(fromIndex, toIndex);
+      if (dragRef.current) {
+        if (dragOverNsId !== null && dragOverNsId !== activeNamespaceId) {
+          moveDocToNamespace(dragRef.current.docId, dragOverNsId);
+        } else if (dragOverIndex !== null) {
+          const fromIndex = documents.findIndex((d) => d.id === dragRef.current!.docId);
+          let toIndex = dragOverIndex;
+          if (fromIndex !== -1 && toIndex !== fromIndex && toIndex !== fromIndex + 1) {
+            if (toIndex > fromIndex) toIndex--;
+            reorderDocuments(fromIndex, toIndex);
+          }
         }
       }
       dragRef.current = null;
       setDragOverIndex(null);
+      setDragOverNsId(null);
     };
 
     document.addEventListener("mousemove", onMouseMove);

@@ -1,12 +1,13 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Header } from "./components/layout/Header";
+import { NamespaceBar } from "./components/layout/NamespaceBar";
 import { TabBar } from "./components/layout/TabBar";
 import { StatusBar } from "./components/layout/StatusBar";
 import { LeftPanel } from "./components/panels/LeftPanel";
 import { PreviewPanel } from "./components/panels/PreviewPanel";
 import { PanelResize } from "./components/panels/PanelResize";
 import { Canvas } from "./components/canvas/Canvas";
-import { InputModal } from "./components/modals/InputModal";
+import { InputModal, showConfirmModal } from "./components/modals/InputModal";
 import { QuickEditModal } from "./components/modals/QuickEditModal";
 import { SettingsModal } from "./components/modals/SettingsModal";
 import { ManualModal } from "./components/modals/ManualModal";
@@ -26,6 +27,7 @@ import {
 import type { ProjectFile } from "./types/project";
 import { setStatus, setProjectPath, markSaved } from "./stores/projectStore";
 import { mergeSelectedLayers } from "./lib/layerOps";
+import { exportToMLT } from "./lib/mltExporter";
 import { usePaletteStore } from "./stores/paletteStore";
 import { useMltStore } from "./stores/mltStore";
 import { useAutoSave } from "./hooks/useAutoSave";
@@ -77,7 +79,12 @@ function App() {
   const handleSaveAs = useCallback(async () => {
     useProjectStore.getState().saveCurrentDocState();
     const proj = useProjectStore.getState().project;
-    setProjectPath(null);
+    const curPath = useProjectStore.getState().projectPath;
+    // 현재 파일명을 기본값으로
+    if (curPath) {
+      const baseName = curPath.split("/").pop()?.split("\\").pop()?.replace(/\.[^.]+$/, "");
+      if (baseName) proj.name = baseName;
+    }
     try {
       const path = await saveProjectDialog(proj);
       if (path) {
@@ -86,8 +93,71 @@ function App() {
         markSaved();
         setProjectPath(path);
       }
+      // 취소 시 curPath 유지 (setProjectPath 호출 안 함)
     } catch {
       downloadJson(proj, `${proj.name}.aaproj`);
+    }
+  }, []);
+
+  // ── 새 프로젝트 ──
+  const handleNewProject = useCallback(async () => {
+    const ok = await showConfirmModal(t("confirm.newProject"), t("modal.ok"), "danger");
+    if (!ok) return;
+
+    setProjectPath(null);
+    useProjectStore.setState({
+      project: {
+        version: 2,
+        name: "Untitled Project",
+        documents: [],
+        activeDocId: -1,
+        nextDocId: 0,
+        namespaces: [],
+        activeNamespaceId: -1,
+        nextNamespaceId: 0,
+      },
+      layers: [],
+      activeLayerId: null,
+      selectedLayerIds: new Set(),
+      nextLayerId: 0,
+      undoStack: [],
+      redoStack: [],
+      closedDocStack: [],
+      closedNsStack: [],
+    });
+    createNewProject();
+  }, []);
+
+  // ── MLT 익스포트 ──
+  const handleExportMLT = useCallback(async () => {
+    useProjectStore.getState().saveCurrentDocState();
+    const proj = useProjectStore.getState().project;
+    const mltContent = exportToMLT(proj);
+    const projPath = useProjectStore.getState().projectPath;
+    const baseName = projPath
+      ? projPath.split("/").pop()?.split("\\").pop()?.replace(/\.[^.]+$/, "") ?? proj.name
+      : proj.name;
+    const filename = `${baseName}.mlt`;
+
+    try {
+      const { save } = await import("@tauri-apps/plugin-dialog");
+      const { invoke } = await import("@tauri-apps/api/core");
+      const path = await save({
+        defaultPath: filename,
+        filters: [{ name: "MLT", extensions: ["mlt"] }],
+      });
+      if (!path) return;
+      await invoke("export_text", { path, content: mltContent });
+      setStatus(`${t("status.textExported")}: ${path}`);
+    } catch {
+      // 브라우저 폴백
+      const blob = new Blob([mltContent], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
     }
   }, []);
 
@@ -98,6 +168,13 @@ function App() {
       if (!result) return;
       await saveRecentProject(result.path);
       const data = result.data;
+      // v1 → v2 마이그레이션
+      if (!data.namespaces || data.namespaces.length === 0) {
+        data.namespaces = [{ id: 0, name: "Default", docIds: data.documents.map((d: any) => d.id) }];
+        data.activeNamespaceId = 0;
+        data.nextNamespaceId = 1;
+        data.version = 2;
+      }
       useProjectStore.setState({
         project: data,
         layers: [],
@@ -144,6 +221,10 @@ function App() {
           handleSave();
         }
       }
+      if (mod && e.key === "p") {
+        e.preventDefault();
+        handleNewProject();
+      }
       if (mod && e.key === "o") {
         e.preventDefault();
         handleOpen();
@@ -163,8 +244,9 @@ function App() {
           store.reopenLastClosedDocument();
           setStatus(t("status.docReopened"));
         }
+        return;
       }
-      if (mod && e.key === "n") {
+      if (mod && e.key === "t") {
         e.preventDefault();
         const store = useProjectStore.getState();
         store.saveCurrentDocState();
@@ -174,11 +256,26 @@ function App() {
         });
         store.restoreDocState();
         setStatus(`${t("status.newDoc")}: ${doc.name}`);
+        return;
+      }
+      if (mod && e.shiftKey && e.key === "n") {
+        e.preventDefault();
+        const store = useProjectStore.getState();
+        if (store.closedNsStack.length > 0) {
+          store.reopenLastClosedNamespace();
+          setStatus(t("status.nsReopened"));
+        }
+        return;
+      }
+      if (mod && e.key === "n") {
+        e.preventDefault();
+        const store = useProjectStore.getState();
+        store.createNamespace();
       }
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [handleSave, handleSaveAs, handleOpen]);
+  }, [handleSave, handleSaveAs, handleOpen, handleNewProject]);
 
   // ── 초기화: 최근 프로젝트 복원 또는 새 프로젝트 생성 ──
   useEffect(() => {
@@ -285,11 +382,14 @@ function App() {
       <Header
         onOpenQuickEdit={() => setQuickEditOpen(true)}
         onOpenSettings={() => setSettingsOpen(true)}
+        onNewProject={handleNewProject}
         onSave={handleSave}
         onOpen={handleOpen}
         onMerge={mergeSelectedLayers}
+        onExportMLT={handleExportMLT}
         onOpenManual={() => setManualOpen(true)}
       />
+      <NamespaceBar />
       <TabBar />
       {previewMode === "bottom" ? (
         /* 하단 모드: 세로 분할 */
@@ -367,6 +467,18 @@ async function tryRestoreLastProject(): Promise<boolean> {
     const data = await invoke<ProjectFile>("load_project", { path });
     if (!data || !data.documents || data.documents.length === 0) return false;
 
+    // v1 → v2 마이그레이션: 네임스페이스 추가
+    if (!data.namespaces || data.namespaces.length === 0) {
+      data.namespaces = [{
+        id: 0,
+        name: "Default",
+        docIds: data.documents.map((d) => d.id),
+      }];
+      data.activeNamespaceId = 0;
+      data.nextNamespaceId = 1;
+      data.version = 2;
+    }
+
     setProjectPath(path);
     useProjectStore.setState({
       project: data,
@@ -385,6 +497,11 @@ async function tryRestoreLastProject(): Promise<boolean> {
 /** 새 프로젝트 생성 (초기화 시 폴백) */
 function createNewProject() {
   const store = useProjectStore.getState();
+  // 기본 네임스페이스 생성
+  const ns = store.createNamespace("Default");
+  useProjectStore.setState({
+    project: { ...useProjectStore.getState().project, activeNamespaceId: ns.id },
+  });
   const doc = store.createDocument("문서 1");
   useProjectStore.setState({
     project: { ...useProjectStore.getState().project, activeDocId: doc.id },

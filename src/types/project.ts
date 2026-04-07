@@ -1,3 +1,10 @@
+/** 네임스페이스 — MLT 섹션에 대응. 문서의 그룹. */
+export interface Namespace {
+  id: number;
+  name: string;
+  docIds: number[];
+}
+
 /** .aaproj 파일 구조 */
 export interface ProjectFile {
   version: number;
@@ -5,6 +12,9 @@ export interface ProjectFile {
   documents: Document[];
   activeDocId: number;
   nextDocId: number;
+  namespaces: Namespace[];
+  activeNamespaceId: number;
+  nextNamespaceId: number;
 }
 
 /** .aadoc 파일 구조 (문서 단위 export/import) */

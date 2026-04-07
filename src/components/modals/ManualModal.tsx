@@ -4,7 +4,7 @@ import {
   GripVertical, Lock, Unlock, Eye, EyeOff, Trash2,
   Copy, Download, PanelBottom, PanelRight, ExternalLink,
   ChevronsRight, ChevronsLeft, MoreVertical, RefreshCw,
-  BookOpen,
+  BookOpen, FileDown, FilePlus,
 } from "lucide-react";
 import { useI18n } from "../../i18n";
 import styles from "./ManualModal.module.css";
@@ -68,10 +68,12 @@ function ManualKo() {
 
       <h2>파일 관리</h2>
       <ul>
+        <li><I><FilePlus size={14} /></I> <strong>새 프로젝트</strong> (<K>Ctrl+P</K>) — 새 프로젝트 생성</li>
         <li><I><FolderOpen size={14} /></I> <strong>열기</strong> (<K>Ctrl+O</K>) — 프로젝트 파일(.aaproj) 열기</li>
         <li><I><Save size={14} /></I> <strong>저장</strong> (<K>Ctrl+S</K>) — 현재 프로젝트 저장. 처음 저장 시 경로 선택</li>
         <li><strong>다른 이름으로 저장</strong> (<K>Ctrl+Shift+S</K>) — 새 경로에 저장</li>
         <li><strong>자동 저장</strong> — 설정에서 간격 지정 (안함/30초/1분/3분/5분/10분). 파일이 저장된 적 있는 경우에만 동작</li>
+        <li><I><FileDown size={14} /></I> <strong>MLT 익스포트</strong> — 프로젝트를 MLT 파일로 내보내기. 네임스페이스가 섹션 헤더가 됨</li>
       </ul>
       <h3>파일 형식</h3>
       <ul>
@@ -79,14 +81,27 @@ function ManualKo() {
         <li><strong>.aadoc</strong> — 문서 단위 내보내기/가져오기</li>
         <li><strong>.aapal</strong> — 단일 팔레트</li>
         <li><strong>.aapals</strong> — 팔레트세트</li>
+        <li><strong>.mlt</strong> — MLT 라이브러리 (익스포트 가능)</li>
+      </ul>
+
+      <h2>네임스페이스</h2>
+      <p>네임스페이스는 문서를 그룹으로 묶는 단위입니다. MLT 익스포트 시 섹션 헤더로 사용됩니다.</p>
+      <ul>
+        <li><K>Ctrl+N</K> — 새 네임스페이스 추가</li>
+        <li><K>Ctrl+Shift+N</K> — 삭제된 네임스페이스 복원</li>
+        <li><strong>더블클릭</strong> — 이름 변경</li>
+        <li><strong>드래그</strong> — 순서 변경</li>
+        <li>문서 탭을 네임스페이스 탭으로 드래그하여 이동</li>
+        <li>최소 1개 네임스페이스, 각 네임스페이스는 최소 1개 문서 유지</li>
       </ul>
 
       <h2>문서 탭</h2>
       <ul>
-        <li><K>Ctrl+N</K> — 새 문서 추가</li>
-        <li><K>Ctrl+W</K> — 현재 문서 닫기 (최소 1개 유지)</li>
-        <li><K>Ctrl+Shift+T</K> — 닫힌 문서 복원</li>
+        <li><K>Ctrl+T</K> — 새 문서 추가</li>
+        <li><K>Ctrl+W</K> — 현재 문서 닫기</li>
+        <li><K>Ctrl+Shift+T</K> — 삭제된 문서 복원</li>
         <li><strong>더블클릭</strong> — 문서 이름 변경</li>
+        <li><strong>드래그</strong> — 순서 변경</li>
         <li>탭 클릭 후 <K>Ctrl+C</K>/<K>Ctrl+V</K> — 문서 복사/붙여넣기</li>
       </ul>
 
@@ -200,9 +215,12 @@ function ManualKo() {
       <table className={styles.shortcutTable}>
         <thead><tr><th>단축키</th><th>기능</th></tr></thead>
         <tbody>
-          <tr><td><K>Ctrl+N</K></td><td>새 문서</td></tr>
+          <tr><td><K>Ctrl+N</K></td><td>새 네임스페이스</td></tr>
+          <tr><td><K>Ctrl+Shift+N</K></td><td>삭제된 네임스페이스 복원</td></tr>
+          <tr><td><K>Ctrl+T</K></td><td>새 문서</td></tr>
           <tr><td><K>Ctrl+W</K></td><td>문서 닫기</td></tr>
-          <tr><td><K>Ctrl+Shift+T</K></td><td>닫힌 문서 복원</td></tr>
+          <tr><td><K>Ctrl+Shift+T</K></td><td>삭제된 문서 복원</td></tr>
+          <tr><td><K>Ctrl+P</K></td><td>새 프로젝트</td></tr>
           <tr><td><K>Ctrl+O</K></td><td>열기</td></tr>
           <tr><td><K>Ctrl+S</K></td><td>저장</td></tr>
           <tr><td><K>Ctrl+Shift+S</K></td><td>다른 이름으로 저장</td></tr>
@@ -238,6 +256,7 @@ function ManualJa() {
 
       <h2>ファイル管理</h2>
       <ul>
+        <li><I><FilePlus size={14} /></I> <strong>新規プロジェクト</strong> (<K>Ctrl+P</K>)</li>
         <li><I><FolderOpen size={14} /></I> <strong>開く</strong> (<K>Ctrl+O</K>)</li>
         <li><I><Save size={14} /></I> <strong>保存</strong> (<K>Ctrl+S</K>) / 名前を付けて保存 (<K>Ctrl+Shift+S</K>)</li>
         <li><strong>自動保存</strong> — 設定で間隔指定</li>
@@ -246,14 +265,26 @@ function ManualJa() {
       <ul>
         <li><strong>.aaproj</strong> — プロジェクトファイル（全ドキュメント含む）</li>
         <li><strong>.aapal</strong> — パレット / <strong>.aapals</strong> — パレットセット</li>
+        <li><strong>.mlt</strong> — MLTライブラリ（エクスポート可能）</li>
+      </ul>
+
+      <h2>ネームスペース</h2>
+      <p>ネームスペースはドキュメントをグループ化する単位です。MLTエクスポート時にセクションヘッダーになります。</p>
+      <ul>
+        <li><K>Ctrl+N</K> — 新規ネームスペース</li>
+        <li><K>Ctrl+Shift+N</K> — 削除したネームスペースを復元</li>
+        <li><strong>ダブルクリック</strong> — 名前変更</li>
+        <li><strong>ドラッグ</strong> — 順序変更</li>
+        <li>ドキュメントタブをネームスペースタブにドラッグして移動</li>
       </ul>
 
       <h2>ドキュメントタブ</h2>
       <ul>
-        <li><K>Ctrl+N</K> — 新規ドキュメント</li>
-        <li><K>Ctrl+W</K> — ドキュメントを閉じる（最低1つ維持）</li>
-        <li><K>Ctrl+Shift+T</K> — 閉じたドキュメントを復元</li>
+        <li><K>Ctrl+T</K> — 新規ドキュメント</li>
+        <li><K>Ctrl+W</K> — ドキュメントを閉じる</li>
+        <li><K>Ctrl+Shift+T</K> — 削除したドキュメントを復元</li>
         <li><strong>ダブルクリック</strong> — ドキュメント名変更</li>
+        <li><strong>ドラッグ</strong> — 順序変更</li>
         <li>タブクリック後 <K>Ctrl+C</K>/<K>Ctrl+V</K> — ドキュメントコピー/貼り付け</li>
       </ul>
 
@@ -308,9 +339,12 @@ function ManualJa() {
       <table className={styles.shortcutTable}>
         <thead><tr><th>ショートカット</th><th>機能</th></tr></thead>
         <tbody>
-          <tr><td><K>Ctrl+N</K></td><td>新規ドキュメント</td></tr>
+          <tr><td><K>Ctrl+N</K></td><td>新規ネームスペース</td></tr>
+          <tr><td><K>Ctrl+Shift+N</K></td><td>削除したネームスペースを復元</td></tr>
+          <tr><td><K>Ctrl+T</K></td><td>新規ドキュメント</td></tr>
           <tr><td><K>Ctrl+W</K></td><td>ドキュメントを閉じる</td></tr>
-          <tr><td><K>Ctrl+Shift+T</K></td><td>閉じたドキュメントを復元</td></tr>
+          <tr><td><K>Ctrl+Shift+T</K></td><td>削除したドキュメントを復元</td></tr>
+          <tr><td><K>Ctrl+P</K></td><td>新規プロジェクト</td></tr>
           <tr><td><K>Ctrl+O</K></td><td>開く</td></tr>
           <tr><td><K>Ctrl+S</K></td><td>保存</td></tr>
           <tr><td><K>Ctrl+Shift+S</K></td><td>名前を付けて保存</td></tr>
@@ -345,22 +379,36 @@ function ManualEn() {
 
       <h2>File Management</h2>
       <ul>
+        <li><I><FilePlus size={14} /></I> <strong>New Project</strong> (<K>Ctrl+P</K>)</li>
         <li><I><FolderOpen size={14} /></I> <strong>Open</strong> (<K>Ctrl+O</K>)</li>
         <li><I><Save size={14} /></I> <strong>Save</strong> (<K>Ctrl+S</K>) / Save As (<K>Ctrl+Shift+S</K>)</li>
         <li><strong>Auto Save</strong> — Configurable interval in settings</li>
+        <li><I><FileDown size={14} /></I> <strong>Export MLT</strong> — Export project as MLT file. Namespaces become section headers</li>
       </ul>
       <h3>File Formats</h3>
       <ul>
         <li><strong>.aaproj</strong> — Project file (all documents)</li>
         <li><strong>.aapal</strong> — Palette / <strong>.aapals</strong> — Palette set</li>
+        <li><strong>.mlt</strong> — MLT library (exportable)</li>
+      </ul>
+
+      <h2>Namespaces</h2>
+      <p>Namespaces group documents. They become section headers when exporting to MLT.</p>
+      <ul>
+        <li><K>Ctrl+N</K> — New namespace</li>
+        <li><K>Ctrl+Shift+N</K> — Reopen deleted namespace</li>
+        <li><strong>Double-click</strong> — Rename</li>
+        <li><strong>Drag</strong> — Reorder</li>
+        <li>Drag document tabs onto namespace tabs to move</li>
       </ul>
 
       <h2>Document Tabs</h2>
       <ul>
-        <li><K>Ctrl+N</K> — New document</li>
-        <li><K>Ctrl+W</K> — Close document (minimum 1 kept)</li>
+        <li><K>Ctrl+T</K> — New document</li>
+        <li><K>Ctrl+W</K> — Close document</li>
         <li><K>Ctrl+Shift+T</K> — Reopen closed document</li>
         <li><strong>Double-click</strong> — Rename document</li>
+        <li><strong>Drag</strong> — Reorder</li>
         <li>Click tab then <K>Ctrl+C</K>/<K>Ctrl+V</K> — Copy/paste document</li>
       </ul>
 
@@ -416,9 +464,12 @@ function ManualEn() {
       <table className={styles.shortcutTable}>
         <thead><tr><th>Shortcut</th><th>Action</th></tr></thead>
         <tbody>
-          <tr><td><K>Ctrl+N</K></td><td>New document</td></tr>
+          <tr><td><K>Ctrl+N</K></td><td>New namespace</td></tr>
+          <tr><td><K>Ctrl+Shift+N</K></td><td>Reopen deleted namespace</td></tr>
+          <tr><td><K>Ctrl+T</K></td><td>New document</td></tr>
           <tr><td><K>Ctrl+W</K></td><td>Close document</td></tr>
           <tr><td><K>Ctrl+Shift+T</K></td><td>Reopen closed document</td></tr>
+          <tr><td><K>Ctrl+P</K></td><td>New project</td></tr>
           <tr><td><K>Ctrl+O</K></td><td>Open</td></tr>
           <tr><td><K>Ctrl+S</K></td><td>Save</td></tr>
           <tr><td><K>Ctrl+Shift+S</K></td><td>Save As</td></tr>

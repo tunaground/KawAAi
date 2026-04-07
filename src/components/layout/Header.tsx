@@ -1,6 +1,6 @@
 import {
   FolderOpen, Save, Merge, PenTool, Magnet,
-  Grid3x3, LetterText, Settings, Paintbrush, Eraser, X, BookOpen,
+  Grid3x3, LetterText, Settings, Paintbrush, Eraser, X, BookOpen, FileDown, FilePlus,
 } from "lucide-react";
 import { useProjectStore } from "../../stores/projectStore";
 import { type EditorMode } from "../../stores/projectStore";
@@ -10,13 +10,15 @@ import styles from "./Header.module.css";
 interface HeaderProps {
   onOpenQuickEdit: () => void;
   onOpenSettings: () => void;
+  onNewProject: () => void;
   onSave: () => void;
   onOpen: () => void;
   onMerge: () => void;
+  onExportMLT: () => void;
   onOpenManual: () => void;
 }
 
-export function Header({ onOpenQuickEdit, onOpenSettings, onSave, onOpen, onMerge, onOpenManual }: HeaderProps) {
+export function Header({ onOpenQuickEdit, onOpenSettings, onNewProject, onSave, onOpen, onMerge, onExportMLT, onOpenManual }: HeaderProps) {
   const snapEnabled = useProjectStore((s) => s.viewSettings.snapEnabled);
   const gridVisible = useProjectStore((s) => s.viewSettings.gridVisible);
   const charGridEnabled = useProjectStore((s) => s.viewSettings.charGridEnabled);
@@ -33,15 +35,21 @@ export function Header({ onOpenQuickEdit, onOpenSettings, onSave, onOpen, onMerg
 
   return (
     <header className={styles.header}>
-      <h1 className={styles.title}>KawAAi <span className={styles.version}>v0.2.0</span></h1>
+      <h1 className={styles.title}>KawAAi <span className={styles.version}>v0.3.0</span></h1>
 
       <div className={styles.toolbar}>
         {/* 파일 */}
+        <button className={styles.btn} onClick={onNewProject} title={t("header.newProject")}>
+          <FilePlus size={16} />
+        </button>
         <button className={styles.btn} onClick={onOpen} title={t("header.open")}>
           <FolderOpen size={16} />
         </button>
         <button className={styles.btn} onClick={onSave} title={t("header.save")}>
           <Save size={16} />
+        </button>
+        <button className={styles.btn} onClick={onExportMLT} title={t("header.exportMLT")}>
+          <FileDown size={16} />
         </button>
 
         <div className={styles.separator} />

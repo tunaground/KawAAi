@@ -1,7 +1,9 @@
 export const ja = {
+  "header.newProject": "新規プロジェクト (Ctrl+P)",
   "header.open": "開く (Ctrl+O)",
   "header.save": "保存 (Ctrl+S)",
   "header.manual": "マニュアル",
+  "header.exportMLT": "MLTエクスポート",
   "header.merge": "レイヤー結合",
   "header.quickEdit": "レイヤーキャンバス",
   "header.opaquePaint": "空白塗り",
@@ -117,11 +119,13 @@ export const ja = {
   "status.lastPalette": "最後のパレットは削除できません",
   "status.docPasted": "ドキュメント貼り付け済み",
   "status.docReopened": "ドキュメント復元済み",
+  "status.nsReopened": "ネームスペース復元済み",
   "status.saved": "保存済み",
   "status.loaded": "読み込み済み",
   "status.autoSaved": "自動保存済み",
   "status.newDoc": "新しいドキュメント",
   "status.newProject": "新しいプロジェクト",
+  "confirm.newProject": "新しいプロジェクトを作成しますか？\n未保存の変更は失われます。",
   "status.docCopied": "ドキュメントコピー済み",
   "status.textExported": "テキストエクスポート済み",
 };

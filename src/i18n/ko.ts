@@ -1,8 +1,10 @@
 export const ko = {
   // Header
+  "header.newProject": "새 프로젝트 (Ctrl+P)",
   "header.open": "열기 (Ctrl+O)",
   "header.save": "저장 (Ctrl+S)",
   "header.manual": "매뉴얼",
+  "header.exportMLT": "MLT 익스포트",
   "header.merge": "레이어 병합",
   "header.quickEdit": "레이어 캔버스",
   "header.opaquePaint": "공백 채색",
@@ -127,11 +129,13 @@ export const ko = {
   "status.lastPalette": "마지막 팔레트는 삭제할 수 없습니다",
   "status.docPasted": "문서 붙여넣기됨",
   "status.docReopened": "문서 복원됨",
+  "status.nsReopened": "네임스페이스 복원됨",
   "status.saved": "저장됨",
   "status.loaded": "불러옴",
   "status.autoSaved": "자동 저장됨",
   "status.newDoc": "새 문서",
   "status.newProject": "새 프로젝트",
+  "confirm.newProject": "새 프로젝트를 만드시겠습니까?\n저장하지 않은 변경사항이 사라집니다.",
   "status.docCopied": "문서 복사됨",
   "status.textExported": "텍스트 익스포트됨",
 };

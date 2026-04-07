@@ -1,0 +1,73 @@
+.nsBar {
+  display: flex;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  flex-shrink: 0;
+  font-size: 0.7rem;
+}
+
+.tab {
+  padding: 0.2rem 0.6rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-right: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+}
+
+.active {
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border-bottom: 2px solid var(--accent);
+}
+
+.tabClose {
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 1px;
+  border-radius: 2px;
+  display: flex;
+}
+
+.tabClose:hover {
+  color: #f44;
+  background: rgba(255, 50, 50, 0.15);
+}
+
+.tabAdd {
+  color: var(--text-secondary);
+  padding: 0.2rem 0.4rem;
+}
+
+.tabAdd:hover {
+  color: var(--accent);
+}
+
+.tabName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tabNameInput {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  padding: 0 4px;
+  font-size: 0.7rem;
+  outline: none;
+  width: 80px;
+}
+
+.dropTarget {
+  background: rgba(33, 150, 243, 0.15);
+}
