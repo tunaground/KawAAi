@@ -5,6 +5,7 @@ import { useProjectStore } from "../../stores/projectStore";
 import { saveUndoSnapshot } from "../../stores/projectStore";
 import { setStatus } from "../../stores/projectStore";
 import { showInputModal, showConfirmModal } from "../modals/InputModal";
+import { useConfigStore } from "../../stores/configStore";
 import { useI18n } from "../../i18n";
 import styles from "./PaletteSection.module.css";
 
@@ -146,7 +147,11 @@ export function PaletteSection() {
         <select
           className={styles.select}
           value={activePaletteIndex}
-          onChange={(e) => setActivePaletteIndex(Number(e.target.value))}
+          onChange={(e) => {
+            const idx = Number(e.target.value);
+            setActivePaletteIndex(idx);
+            useConfigStore.getState().updateConfig({ activePaletteIndex: idx });
+          }}
         >
           {paletteSet.palettes.map((p, i) => (
             <option key={i} value={i}>{p.name}</option>

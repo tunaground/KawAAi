@@ -4,6 +4,7 @@ import { useMltStore } from "../../stores/mltStore";
 import { useProjectStore } from "../../stores/projectStore";
 import { setStatus } from "../../stores/projectStore";
 import { getMeasureCtx, LAYER_PADDING, LINE_HEIGHT } from "../../lib/fontMetrics";
+import { useConfigStore } from "../../stores/configStore";
 import { useI18n } from "../../i18n";
 import styles from "./MltSection.module.css";
 
@@ -109,7 +110,9 @@ export function MltSection() {
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    await loadMltByIndex(Number(e.target.value));
+    const idx = Number(e.target.value);
+    await loadMltByIndex(idx);
+    useConfigStore.getState().updateConfig({ mltFileIndex: idx, mltSectionIndex: 0 });
   };
 
   const insertEntry = (entry: { name: string; text: string }) => {
@@ -161,7 +164,11 @@ export function MltSection() {
           <select
             className={styles.select}
             value={currentSectionIndex}
-            onChange={(e) => setCurrentSection(Number(e.target.value))}
+            onChange={(e) => {
+              const idx = Number(e.target.value);
+              setCurrentSection(idx);
+              useConfigStore.getState().updateConfig({ mltSectionIndex: idx });
+            }}
           >
             {sections.map((s, i) => (
               <option key={i} value={i}>{s.name}</option>

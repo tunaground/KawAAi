@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, forwardRef } from "react";
 import { ChevronDown, Plus, Image } from "lucide-react";
 import { useProjectStore, saveUndoSnapshot } from "../../stores/projectStore";
-
+import { useConfigStore } from "../../stores/configStore";
 import { useI18n } from "../../i18n";
 import { LayerItem } from "./LayerItem";
 import { PaletteSection } from "./PaletteSection";
@@ -10,11 +10,10 @@ import styles from "./LeftPanel.module.css";
 import layerItemStyles from "./LayerItem.module.css";
 
 export const LeftPanel = forwardRef<HTMLDivElement>(function LeftPanel(_props, ref) {
-  const [sectionsCollapsed, setSectionsCollapsed] = useState({
-    layers: false,
-    palette: true,
-    library: true,
-  });
+  const savedSections = useConfigStore((s) => s.config.sectionsCollapsed);
+  const [sectionsCollapsed, setSectionsCollapsed] = useState(
+    savedSections ?? { layers: false, palette: true, library: true }
+  );
 
   const layers = useProjectStore((s) => s.layers);
   const moveLayerOrder = useProjectStore((s) => s.moveLayerOrder);
@@ -26,7 +25,11 @@ export const LeftPanel = forwardRef<HTMLDivElement>(function LeftPanel(_props, r
   const dragItemsCache = useRef<{ id: number; el: HTMLElement; top: number; bottom: number; midY: number }[]>([]);
 
   const toggleSection = (key: keyof typeof sectionsCollapsed) => {
-    setSectionsCollapsed((s) => ({ ...s, [key]: !s[key] }));
+    setSectionsCollapsed((s) => {
+      const next = { ...s, [key]: !s[key] };
+      useConfigStore.getState().updateConfig({ sectionsCollapsed: next });
+      return next;
+    });
   };
 
   const addTextLayer = () => {

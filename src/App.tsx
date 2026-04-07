@@ -200,9 +200,30 @@ function App() {
 
       // 팔레트세트 로드
       await usePaletteStore.getState().initFromStorage();
+      const cfg = useConfigStore.getState().config;
+      if (cfg.activePaletteIndex > 0) {
+        usePaletteStore.getState().setActivePaletteIndex(cfg.activePaletteIndex);
+      }
 
       // MLT 디렉토리 복원
       await useMltStore.getState().initFromStorage();
+      // MLT 파일/섹션 인덱스 복원
+      if (cfg.mltFileIndex > 0 && useMltStore.getState().files.length > cfg.mltFileIndex) {
+        const { invoke } = await import("@tauri-apps/api/core").catch(() => ({ invoke: null }));
+        if (invoke) {
+          const f = useMltStore.getState().files[cfg.mltFileIndex];
+          try {
+            const content = await invoke<string>("read_mlt_file", { path: f.path });
+            useMltStore.getState().loadFileContent(cfg.mltFileIndex, content);
+          } catch {}
+        }
+      }
+      if (cfg.mltSectionIndex > 0) {
+        const sections = useMltStore.getState().sections;
+        if (sections.length > cfg.mltSectionIndex) {
+          useMltStore.getState().setCurrentSection(cfg.mltSectionIndex);
+        }
+      }
 
       // 최근 프로젝트 복원 시도
       const restored = await tryRestoreLastProject();
