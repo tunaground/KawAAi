@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { PaletteSetFile, Palette } from "../types/palette";
 
-const STORAGE_KEY = "kawaii_palette_set";
+const STORAGE_KEY = "KawAAi_palette_set";
 
 const DEFAULT_PALETTE_SET: PaletteSetFile = {
   version: 1,

@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { AppConfig, AutoSaveInterval } from "../types/config";
 import { DEFAULT_CONFIG } from "../types/config";
 
-const STORAGE_KEY = "kawaii_config";
+const STORAGE_KEY = "KawAAi_config";
 
 type ThemeMode = "system" | "light" | "dark";
 

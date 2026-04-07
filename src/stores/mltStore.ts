@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { parseMLT, type MltEntry } from "../lib/mltParser";
 
-const STORAGE_KEY = "kawaii_mlt_dir";
+const STORAGE_KEY = "KawAAi_mlt_dir";
 
 interface MltState {
   dirPath: string;
