@@ -1,0 +1,100 @@
+.panel {
+  width: 350px;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.collapsed {
+  width: auto !important;
+  height: auto !important;
+}
+
+.collapsed .content {
+  display: none;
+}
+
+/* 접힘 시 헤더에서 열기 버튼만 보임 */
+.collapsed .header span {
+  display: none;
+}
+.collapsed .header {
+  justify-content: flex-end;
+}
+.collapsed .headerBtns .headerBtn {
+  display: none;
+}
+.collapsed .headerBtns .expandBtn {
+  display: flex;
+}
+
+/* 하단 배치 모드 */
+.bottom {
+  width: 100% !important;
+  height: 250px;
+  border-left: none;
+  border-top: 1px solid var(--border);
+}
+
+.header {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.headerBtns {
+  display: flex;
+  gap: 4px;
+}
+
+.headerBtn {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.headerBtn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.content {
+  flex: 1;
+  overflow: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.textarea {
+  flex: 1;
+  font-family: var(--font-aa);
+  font-size: 16px;
+  line-height: 18px;
+  white-space: pre;
+  background: #fff;
+  color: #000;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 12px;
+  resize: none;
+  overflow: hidden;
+}

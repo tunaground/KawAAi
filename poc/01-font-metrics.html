@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>POC 1: Font Metrics Accuracy</title>
+    <style>
+        @font-face {
+            font-family: "Saitamaar";
+            src: url("../Saitamaar-Regular.woff2") format("woff2");
+            font-display: swap;
+        }
+        @font-face {
+            font-family: "NanumGothicCoding";
+            src: url("../NanumGothicCoding.woff2") format("woff2");
+            font-display: swap;
+            unicode-range: U+AC00-D7A3, U+3130-318F;
+        }
+
+        :root {
+            --font-aa: "ＭＳ Ｐゴシック", "MS PGothic", "IPAMonaPGothic", Mona, Monapo, "Saitamaar", "NanumGothicCoding", monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            padding: 2rem;
+        }
+
+        h1 { margin-bottom: 0.5rem; color: #2196f3; }
+        h2 { margin: 1.5rem 0 0.5rem; color: #64b5f6; font-size: 1.1rem; }
+        .desc { color: #888; margin-bottom: 1.5rem; font-size: 0.9rem; }
+
+        .test-section {
+            background: #222;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .dom-render {
+            font-family: var(--font-aa);
+            font-size: 16px;
+            line-height: 18px;
+            white-space: pre;
+            background: #111;
+            padding: 8px;
+            border: 1px solid #333;
+            margin-bottom: 0.5rem;
+        }
+
+        canvas { border: 1px solid #333; display: block; margin-bottom: 0.5rem; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 0.5rem; }
+        th, td { padding: 0.4rem 0.6rem; border: 1px solid #333; text-align: left; }
+        th { background: #2a2a2a; color: #64b5f6; }
+        td { font-family: monospace; }
+
+        .match { color: #4caf50; }
+        .mismatch { color: #f44336; font-weight: bold; }
+
+        .result-box {
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 1rem;
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .overlay-container {
+            position: relative;
+            display: inline-block;
+            background: #111;
+            padding: 8px;
+            border: 1px solid #333;
+        }
+
+        .overlay-dom {
+            font-family: var(--font-aa);
+            font-size: 16px;
+            line-height: 18px;
+            white-space: pre;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .overlay-canvas {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            pointer-events: none;
+        }
+
+        #loading { font-size: 1.2rem; color: #ff9800; padding: 2rem; }
+
+        .controls {
+            margin: 1rem 0;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        .controls label { font-size: 0.85rem; }
+        .controls select {
+            background: #333; color: #e0e0e0;
+            border: 1px solid #555; padding: 0.3rem 0.5rem; border-radius: 4px;
+        }
+        button.run-btn {
+            padding: 0.4rem 1rem; background: #2196f3; color: white;
+            border: none; border-radius: 4px; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>POC 1: Font Metrics Accuracy</h1>
+    <p class="desc">
+        Canvas measureText()로 AA 폰트의 문자 폭을 정확히 측정할 수 있는지 검증합니다.<br>
+        DOM 렌더링(실제 span 배치)과 Canvas measureText() 결과를 비교합니다.
+    </p>
+
+    <div id="loading">폰트 로딩 중...</div>
+    <div id="content" style="display: none;">
+        <div class="controls">
+            <label>Font Size:
+                <select id="fontSizeSelect">
+                    <option value="12">12px</option>
+                    <option value="14">14px</option>
+                    <option value="16" selected>16px</option>
+                    <option value="18">18px</option>
+                    <option value="20">20px</option>
+                    <option value="24">24px</option>
+                    <option value="32">32px</option>
+                </select>
+            </label>
+            <button class="run-btn" onclick="runAllTests()">Re-run Tests</button>
+        </div>
+
+        <h2>Test 1: 개별 문자 폭 비교 (DOM vs Canvas)</h2>
+        <div class="test-section" id="test1-results"></div>
+
+        <h2>Test 2: 누적 위치 정확도 (문자열 내 각 문자의 x 좌표)</h2>
+        <div class="test-section">
+            <p style="font-size:0.85rem;color:#888;margin-bottom:0.5rem;">
+                문자열을 한 글자씩 누적 측정한 x좌표와 DOM에서 실제 렌더링된 위치를 비교합니다.
+            </p>
+            <div id="test2-results"></div>
+        </div>
+
+        <h2>Test 3: 시각적 오버레이 비교</h2>
+        <div class="test-section">
+            <p style="font-size:0.85rem;color:#888;margin-bottom:0.5rem;">
+                DOM 렌더링(반투명 흰색) 위에 Canvas 렌더링(빨간색)을 겹쳐서 오차를 시각적으로 확인합니다.
+            </p>
+            <div id="test3-results"></div>
+        </div>
+
+        <h2>Test 4: 유니코드 스페이스 문자 폭</h2>
+        <div class="test-section">
+            <p style="font-size:0.85rem;color:#888;margin-bottom:0.5rem;">
+                AA에서 간격 조절에 사용하는 다양한 유니코드 스페이스 문자의 폭을 측정합니다.
+            </p>
+            <div id="test4-results"></div>
+        </div>
+
+        <h2>Test 5: Sub-pixel 정밀도 검증</h2>
+        <div class="test-section">
+            <p style="font-size:0.85rem;color:#888;margin-bottom:0.5rem;">
+                measureText()가 반환하는 값이 정수인지 소수인지, 어떤 확장 속성을 지원하는지 확인합니다.
+            </p>
+            <div id="test5-results"></div>
+        </div>
+    </div>
+
+<script>
+    const FONT_FAMILY = 'var(--font-aa)';
+    // CSS variable can't be used directly in canvas, resolve it:
+    const CANVAS_FONT_FAMILY = '"ＭＳ Ｐゴシック", "MS PGothic", "IPAMonaPGothic", Mona, Monapo, Saitamaar, NanumGothicCoding, monospace';
+
+    const TEST_STRINGS = [
+        '∧＿∧',
+        '（　´∀｀）',
+        '（ ﾟДﾟ）',
+        'ABCDEFG abcdefg',
+        'あいうえお カキクケコ',
+        '　　∧_∧　 ／￣￣￣￣￣',
+        '━━━━━━━━━━',
+        'Hello World こんにちは',
+    ];
+
+    const UNICODE_SPACES = [
+        { name: 'Hair Space',       char: '\u200A', code: 'U+200A' },
+        { name: 'Thin Space',       char: '\u2009', code: 'U+2009' },
+        { name: 'Six-Per-Em',       char: '\u2006', code: 'U+2006' },
+        { name: 'Four-Per-Em',      char: '\u2005', code: 'U+2005' },
+        { name: 'Normal Space',     char: ' ',      code: 'U+0020' },
+        { name: 'Three-Per-Em',     char: '\u2004', code: 'U+2004' },
+        { name: 'En Space',         char: '\u2002', code: 'U+2002' },
+        { name: 'Em Space',         char: '\u2003', code: 'U+2003' },
+        { name: 'Ideographic Space',char: '\u3000', code: 'U+3000' },
+    ];
+
+    let fontSize = 16;
+
+    function getCanvasFont() {
+        return `${fontSize}px ${CANVAS_FONT_FAMILY}`;
+    }
+
+    function getCSSFont() {
+        return `${fontSize}px`;
+    }
+
+    // ===================== TEST 1: Individual char widths =====================
+    function runTest1() {
+        const container = document.getElementById('test1-results');
+        container.innerHTML = '';
+
+        const ctx = document.createElement('canvas').getContext('2d');
+        ctx.font = getCanvasFont();
+
+        const testChars = [
+            'A','B','W','i','l','m',
+            'あ','い','ア','カ',
+            '∧','＿','∀','´','｀',
+            '（','）','ﾟ','Д',
+            '━','／','￣','　',
+            ' ','\u200A','\u2009','\u2006','\u2005',
+        ];
+
+        const domRef = document.createElement('div');
+        domRef.className = 'dom-render';
+        domRef.style.fontSize = getCSSFont();
+        domRef.style.position = 'absolute';
+        domRef.style.visibility = 'hidden';
+        document.body.appendChild(domRef);
+
+        let html = '<table><tr><th>Char</th><th>Code</th><th>Canvas W</th><th>DOM W</th><th>Diff (px)</th><th>Status</th></tr>';
+        let totalDiff = 0, maxDiff = 0, count = 0;
+
+        testChars.forEach(ch => {
+            const canvasW = ctx.measureText(ch).width;
+
+            domRef.innerHTML = '';
+            const span = document.createElement('span');
+            span.textContent = ch;
+            domRef.appendChild(span);
+            const domW = span.getBoundingClientRect().width;
+
+            const diff = Math.abs(canvasW - domW);
+            totalDiff += diff; maxDiff = Math.max(maxDiff, diff); count++;
+
+            const status = diff < 0.5 ? 'match' : 'mismatch';
+            const label = ch === ' ' ? '(SP)' : ch === '\u200A' ? '(Hair)' : ch === '\u2009' ? '(Thin)' : ch === '\u2006' ? '(6/em)' : ch === '\u2005' ? '(4/em)' : ch;
+            const code = 'U+' + ch.codePointAt(0).toString(16).toUpperCase().padStart(4, '0');
+
+            html += `<tr><td>${label}</td><td>${code}</td><td>${canvasW.toFixed(4)}</td><td>${domW.toFixed(4)}</td><td class="${status}">${diff.toFixed(4)}</td><td class="${status}">${diff < 0.5 ? 'OK' : 'MISMATCH'}</td></tr>`;
+        });
+
+        html += '</table>';
+        html += `<div class="result-box"><strong>Summary:</strong> ${count} chars | Avg diff: ${(totalDiff/count).toFixed(4)}px | Max diff: ${maxDiff.toFixed(4)}px | ${maxDiff < 0.5 ? '<span class="match">PASS</span>' : '<span class="mismatch">FAIL</span>'}</div>`;
+
+        container.innerHTML = html;
+        document.body.removeChild(domRef);
+    }
+
+    // ===================== TEST 2: Cumulative position accuracy =====================
+    function runTest2() {
+        const container = document.getElementById('test2-results');
+        container.innerHTML = '';
+
+        const ctx = document.createElement('canvas').getContext('2d');
+        ctx.font = getCanvasFont();
+
+        const domRef = document.createElement('div');
+        domRef.className = 'dom-render';
+        domRef.style.fontSize = getCSSFont();
+        domRef.style.position = 'absolute';
+        domRef.style.visibility = 'hidden';
+        document.body.appendChild(domRef);
+
+        let totalMaxDiff = 0;
+
+        TEST_STRINGS.forEach(str => {
+            const chars = [...str];
+
+            // Canvas: cumulative positions
+            const canvasPos = [0];
+            for (let i = 0; i < chars.length; i++) {
+                canvasPos.push(ctx.measureText(chars.slice(0, i + 1).join('')).width);
+            }
+
+            // DOM positions
+            domRef.innerHTML = '';
+            chars.forEach(ch => {
+                const span = document.createElement('span');
+                span.className = 'char';
+                span.textContent = ch;
+                domRef.appendChild(span);
+            });
+            const domRect = domRef.getBoundingClientRect();
+            const spans = domRef.querySelectorAll('.char');
+            const domPos = [];
+            spans.forEach(s => domPos.push({ x: s.getBoundingClientRect().left - domRect.left, w: s.getBoundingClientRect().width, ch: s.textContent }));
+
+            let maxDiff = 0;
+            let html = `<p style="margin:0.5rem 0;font-family:var(--font-aa);font-size:${fontSize}px;">"${str}"</p>`;
+            html += '<table><tr><th>#</th><th>Char</th><th>Canvas X</th><th>DOM X</th><th>Diff</th></tr>';
+
+            for (let i = 0; i < chars.length; i++) {
+                const cx = canvasPos[i];
+                const dx = domPos[i] ? domPos[i].x : 0;
+                const diff = Math.abs(cx - dx);
+                maxDiff = Math.max(maxDiff, diff);
+                const s = diff < 1.0 ? 'match' : 'mismatch';
+                html += `<tr><td>${i}</td><td>${chars[i]}</td><td>${cx.toFixed(2)}</td><td>${dx.toFixed(2)}</td><td class="${s}">${diff.toFixed(2)}</td></tr>`;
+            }
+
+            html += '</table>';
+            html += `<div class="result-box">Max error: ${maxDiff.toFixed(2)}px — ${maxDiff < 1.0 ? '<span class="match">OK</span>' : '<span class="mismatch">DRIFT</span>'}</div>`;
+            container.innerHTML += html;
+            totalMaxDiff = Math.max(totalMaxDiff, maxDiff);
+        });
+
+        container.innerHTML += `<div class="result-box" style="margin-top:1rem;"><strong>Overall worst error:</strong> ${totalMaxDiff.toFixed(2)}px — ${totalMaxDiff < 1.0 ? '<span class="match">PASS</span>' : '<span class="mismatch">FAIL</span>'}</div>`;
+        document.body.removeChild(domRef);
+    }
+
+    // ===================== TEST 3: Visual overlay =====================
+    function runTest3() {
+        const container = document.getElementById('test3-results');
+        container.innerHTML = '';
+
+        const lineHeight = Math.round(fontSize * 1.125);
+
+        TEST_STRINGS.forEach(str => {
+            const chars = [...str];
+            const wrapper = document.createElement('div');
+            wrapper.style.marginBottom = '1rem';
+
+            const label = document.createElement('p');
+            label.style.cssText = 'font-size:0.85rem;color:#888;margin-bottom:4px;';
+            label.textContent = `"${str}"`;
+            wrapper.appendChild(label);
+
+            const overlay = document.createElement('div');
+            overlay.className = 'overlay-container';
+
+            // DOM layer
+            const domDiv = document.createElement('div');
+            domDiv.className = 'overlay-dom';
+            domDiv.style.fontSize = getCSSFont();
+            domDiv.style.lineHeight = lineHeight + 'px';
+            chars.forEach(ch => {
+                const span = document.createElement('span');
+                span.textContent = ch;
+                domDiv.appendChild(span);
+            });
+            overlay.appendChild(domDiv);
+
+            // Canvas layer
+            const tmpCtx = document.createElement('canvas').getContext('2d');
+            tmpCtx.font = getCanvasFont();
+            const totalW = tmpCtx.measureText(str).width;
+
+            const canvas = document.createElement('canvas');
+            canvas.className = 'overlay-canvas';
+            canvas.width = Math.ceil(totalW) + 20;
+            canvas.height = lineHeight + 10;
+            canvas.style.width = canvas.width + 'px';
+            canvas.style.height = canvas.height + 'px';
+
+            const ctx = canvas.getContext('2d');
+            ctx.font = getCanvasFont();
+            ctx.fillStyle = 'rgba(255, 50, 50, 0.6)';
+            ctx.textBaseline = 'top';
+
+            let x = 0;
+            chars.forEach(ch => {
+                ctx.fillText(ch, x, 0);
+                x += ctx.measureText(ch).width;
+            });
+
+            overlay.appendChild(canvas);
+            wrapper.appendChild(overlay);
+            container.appendChild(wrapper);
+        });
+    }
+
+    // ===================== TEST 4: Unicode spaces =====================
+    function runTest4() {
+        const container = document.getElementById('test4-results');
+        container.innerHTML = '';
+
+        const ctx = document.createElement('canvas').getContext('2d');
+        ctx.font = getCanvasFont();
+
+        const domRef = document.createElement('div');
+        domRef.className = 'dom-render';
+        domRef.style.fontSize = getCSSFont();
+        domRef.style.position = 'absolute';
+        domRef.style.visibility = 'hidden';
+        document.body.appendChild(domRef);
+
+        const normalSW = ctx.measureText(' ').width;
+
+        let html = '<table><tr><th>Name</th><th>Code</th><th>Canvas W</th><th>DOM W</th><th>Diff</th><th>Ratio (vs SP)</th></tr>';
+
+        UNICODE_SPACES.forEach(sp => {
+            const cw = ctx.measureText(sp.char).width;
+            domRef.innerHTML = '';
+            ['|', sp.char, '|'].forEach(t => {
+                const s = document.createElement('span');
+                s.textContent = t;
+                domRef.appendChild(s);
+            });
+            const dw = domRef.querySelectorAll('span')[1].getBoundingClientRect().width;
+            const diff = Math.abs(cw - dw);
+            const status = diff < 0.5 ? 'match' : 'mismatch';
+
+            html += `<tr><td>${sp.name}</td><td>${sp.code}</td><td>${cw.toFixed(4)}</td><td>${dw.toFixed(4)}</td><td class="${status}">${diff.toFixed(4)}</td><td>${(cw/normalSW).toFixed(3)}x</td></tr>`;
+        });
+
+        html += '</table>';
+
+        html += '<h3 style="margin-top:1rem;color:#64b5f6;">Dot Combinations (Space + Unicode Space)</h3>';
+        html += '<table><tr><th>Combo</th><th>Width</th><th>Ratio (vs SP)</th></tr>';
+
+        [
+            { name: 'SP + Hair',  str: ' \u200A' },
+            { name: 'SP + Thin',  str: ' \u2009' },
+            { name: 'SP + 6/em',  str: ' \u2006' },
+            { name: 'SP + 4/em',  str: ' \u2005' },
+            { name: 'SP + SP',    str: '  ' },
+        ].forEach(c => {
+            const w = ctx.measureText(c.str).width;
+            html += `<tr><td>${c.name}</td><td>${w.toFixed(4)}</td><td>${(w/normalSW).toFixed(3)}x</td></tr>`;
+        });
+
+        html += '</table>';
+        container.innerHTML = html;
+        document.body.removeChild(domRef);
+    }
+
+    // ===================== TEST 5: Sub-pixel precision =====================
+    function runTest5() {
+        const container = document.getElementById('test5-results');
+        container.innerHTML = '';
+
+        const ctx = document.createElement('canvas').getContext('2d');
+        ctx.font = getCanvasFont();
+
+        const testChars = ['A','i','W','あ','∧','＿',' ','\u200A','━'];
+        const props = ['width','actualBoundingBoxLeft','actualBoundingBoxRight','fontBoundingBoxAscent','fontBoundingBoxDescent'];
+
+        let html = '<table><tr><th>Char</th>';
+        props.forEach(p => html += `<th>${p}</th>`);
+        html += '<th>Integer?</th></tr>';
+
+        testChars.forEach(ch => {
+            const m = ctx.measureText(ch);
+            const label = ch === ' ' ? '(SP)' : ch === '\u200A' ? '(Hair)' : ch;
+            html += `<tr><td>${label}</td>`;
+            props.forEach(p => html += `<td>${m[p] != null ? m[p].toFixed(4) : 'N/A'}</td>`);
+            html += `<td>${m.width === Math.round(m.width) ? 'Yes' : 'No (sub-px)'}</td></tr>`;
+        });
+
+        html += '</table>';
+        html += `<div class="result-box"><strong>결론:</strong> sub-pixel 값을 반환하면 정밀 위치 계산 가능. 정수만 반환하면 프로포셔널 폰트에서 누적 오차 위험.</div>`;
+        container.innerHTML = html;
+    }
+
+    // ===================== MAIN =====================
+    function runAllTests() {
+        fontSize = parseInt(document.getElementById('fontSizeSelect').value);
+        runTest1(); runTest2(); runTest3(); runTest4(); runTest5();
+    }
+
+    async function init() {
+        try {
+            await document.fonts.load('16px Saitamaar');
+            await new Promise(r => setTimeout(r, 500));
+            const loaded = document.fonts.check('16px Saitamaar');
+            if (!loaded) {
+                document.getElementById('loading').textContent = 'Warning: Saitamaar 폰트 로드 실패. 폴백 폰트로 테스트됩니다.';
+                document.getElementById('loading').style.color = '#f44336';
+            } else {
+                document.getElementById('loading').style.display = 'none';
+            }
+        } catch (e) {
+            document.getElementById('loading').textContent = 'Font loading error: ' + e.message;
+            document.getElementById('loading').style.color = '#f44336';
+        }
+        document.getElementById('content').style.display = 'block';
+        runAllTests();
+    }
+
+    init();
+</script>
+</body>
+</html>

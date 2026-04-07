@@ -1,0 +1,54 @@
+.header {
+  background: var(--bg-secondary);
+  padding: 0.4rem 1rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: 1.1rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.toolbar {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.separator {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  margin: 0 0.25rem;
+}

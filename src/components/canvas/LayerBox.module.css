@@ -1,0 +1,153 @@
+.layerBox {
+  position: absolute;
+  border: 1px solid transparent;
+  cursor: default;
+  min-width: 40px;
+  min-height: 20px;
+}
+
+.active {
+  border-color: rgba(33, 150, 243, 0.5);
+}
+
+.selected:not(.active) {
+  border-color: rgba(33, 150, 243, 0.3);
+}
+
+.imageLayer {
+  border-style: dashed;
+}
+
+/* 비활성 레이어: 핸들만 클릭 가능 */
+.layerBox:not(.active) {
+  pointer-events: none;
+}
+.layerBox:not(.active) .handle {
+  pointer-events: auto;
+}
+
+.locked .handle {
+  display: none;
+}
+.locked .textarea {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+/* 핸들 공통 */
+.handle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.layerBox:hover .handle,
+.active .handle {
+  opacity: 1;
+}
+.handle::after {
+  content: "";
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-style: solid;
+}
+
+/* 이동 핸들: 우상단 */
+.moveHandle {
+  top: 0;
+  right: 0;
+  cursor: grab;
+}
+.moveHandle:active {
+  cursor: grabbing;
+}
+.moveHandle::after {
+  top: 0;
+  right: 0;
+  border-width: 0 8px 8px 0;
+  border-color: transparent rgba(33, 150, 243, 0.6) transparent transparent;
+}
+.active .moveHandle::after {
+  border-color: transparent #2196f3 transparent transparent;
+}
+
+/* 리사이즈 핸들: 우하단 */
+.resizeHandle {
+  bottom: 0;
+  right: 0;
+  cursor: nwse-resize;
+}
+.resizeHandle::after {
+  bottom: 0;
+  right: 0;
+  border-width: 0 0 8px 8px;
+  border-color: transparent transparent rgba(33, 150, 243, 0.6) transparent;
+}
+.active .resizeHandle::after {
+  border-color: transparent transparent #2196f3 transparent;
+}
+
+/* 이미지 레이어 핸들 색상 */
+.imageLayer .handle::after {
+  border-color: transparent transparent rgba(255, 152, 0, 0.6) transparent;
+}
+.imageLayer.active .moveHandle::after {
+  border-color: transparent #ff9800 transparent transparent;
+}
+.imageLayer.active .resizeHandle::after {
+  border-color: transparent transparent #ff9800 transparent;
+}
+
+/* 편집 영역 */
+.editArea {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.display {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-aa);
+  font-size: 16px;
+  line-height: 18px;
+  white-space: pre;
+  padding: 4px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.textarea {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-aa);
+  font-size: 16px;
+  line-height: 18px;
+  white-space: pre;
+  color: transparent;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 4px;
+  resize: none;
+  z-index: 2;
+}
+
+.layerImage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}

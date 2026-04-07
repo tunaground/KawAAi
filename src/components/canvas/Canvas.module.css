@@ -1,0 +1,90 @@
+.canvasArea {
+  flex: 1;
+  overflow: auto;
+  background:
+    linear-gradient(90deg, var(--border-light) 1px, transparent 1px),
+    linear-gradient(var(--border-light) 1px, transparent 1px);
+  background-size: 20px 20px;
+  position: relative;
+  min-width: 0;
+}
+
+.canvas {
+  position: relative;
+  width: 600px;
+  height: 500px;
+  background: var(--bg-canvas);
+  margin: 20px;
+  box-shadow: 0 4px 20px var(--shadow);
+  overflow: hidden;
+}
+
+.canvasResizeHandle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  cursor: nwse-resize;
+  z-index: 60;
+}
+
+.canvasResizeHandle::after {
+  content: "";
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid rgba(0, 0, 0, 0.3);
+  border-bottom: 1.5px solid rgba(0, 0, 0, 0.3);
+}
+
+.safeArea {
+  position: absolute;
+  background: #fff;
+  overflow: hidden;
+  z-index: 0;
+  border: 0.5px solid rgba(0, 0, 0, 0.15);
+}
+
+.rulerTop,
+.rulerLeft {
+  position: absolute;
+  z-index: 40;
+  pointer-events: none;
+}
+
+.rulerTop {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 30px;
+}
+
+.rulerLeft {
+  top: 0;
+  left: 0;
+  width: 30px;
+  height: 100%;
+}
+
+.guides {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 45;
+}
+
+.grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}

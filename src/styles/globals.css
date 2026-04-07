@@ -1,0 +1,81 @@
+@font-face {
+  font-family: "Saitamaar";
+  src: url("/fonts/Saitamaar-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "NanumGothicCoding";
+  src: url("/fonts/NanumGothicCoding.woff2") format("woff2");
+  font-display: swap;
+  unicode-range: U+AC00-D7A3, U+3130-318F;
+}
+
+:root {
+  /* AA font fallback chain */
+  --font-aa: "ＭＳ Ｐゴシック", "MS PGothic", "IPAMonaPGothic", Mona, Monapo,
+    "Saitamaar", "NanumGothicCoding", monospace;
+
+  /* Light theme (default) */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --bg-tertiary: #eeeeee;
+  --bg-canvas: #e8e8e8;
+  --accent: #2196f3;
+  --accent-hover: #1976d2;
+  --text-primary: #212121;
+  --text-secondary: #757575;
+  --border: #e0e0e0;
+  --border-light: #f0f0f0;
+  --shadow: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] {
+  --bg-primary: #121212;
+  --bg-secondary: #1e1e1e;
+  --bg-tertiary: #2a2a2a;
+  --bg-canvas: #e8e8e8;
+  --accent: #2196f3;
+  --accent-hover: #42a5f5;
+  --text-primary: #e0e0e0;
+  --text-secondary: #888888;
+  --border: #333333;
+  --border-light: #2a2a2a;
+  --shadow: rgba(0, 0, 0, 0.5);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  height: 100vh;
+  overflow: hidden;
+}
+
+#root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}

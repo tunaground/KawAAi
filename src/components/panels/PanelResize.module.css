@@ -1,0 +1,11 @@
+.handle {
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.handle:hover {
+  background: rgba(33, 150, 243, 0.4);
+}

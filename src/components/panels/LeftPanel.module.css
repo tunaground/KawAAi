@@ -1,0 +1,90 @@
+.leftPanel {
+  width: 260px;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--border);
+  min-height: 0;
+}
+.section:not(.collapsed) {
+  flex: 1;
+}
+.collapsed .sectionBody {
+  display: none;
+}
+
+.sectionHeader {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0;
+}
+.sectionHeader:hover {
+  background: var(--bg-tertiary);
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toggle {
+  transition: transform 0.15s;
+}
+.collapsed .toggle {
+  transform: rotate(-90deg);
+}
+
+.sectionActions {
+  display: flex;
+  gap: 2px;
+}
+
+.sectionBtn {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 3px;
+}
+.sectionBtn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.sectionBody {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.layerList {
+  padding: 0.25rem;
+}
+
+.emptyHint {
+  padding: 1rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-align: center;
+}

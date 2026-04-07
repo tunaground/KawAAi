@@ -1,0 +1,3966 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>POC 3: Layer Editor</title>
+    <style>
+        @font-face {
+            font-family: "Saitamaar";
+            src: url("../Saitamaar-Regular.woff2") format("woff2");
+            font-display: swap;
+        }
+        @font-face {
+            font-family: "NanumGothicCoding";
+            src: url("../NanumGothicCoding.woff2") format("woff2");
+            font-display: swap;
+            unicode-range: U+AC00-D7A3, U+3130-318F;
+        }
+        :root {
+            --font-aa: "ＭＳ Ｐゴシック", "MS PGothic", "IPAMonaPGothic", Mona, Monapo, "Saitamaar", "NanumGothicCoding", monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* Header */
+        header {
+            background: #222;
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid #333;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-shrink: 0;
+        }
+        header h1 { font-size: 1.1rem; color: #2196f3; }
+
+        .toolbar { display: flex; gap: 0.25rem; }
+        .toolbar button {
+            padding: 0.35rem 0.7rem;
+            background: #333;
+            color: #ccc;
+            border: 1px solid #444;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .toolbar button:hover { background: #2196f3; border-color: #2196f3; color: #fff; }
+        .toolbar button.active { background: #2196f3; border-color: #2196f3; color: #fff; }
+
+        /* Main layout */
+        .main {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Left panel */
+        .left-panel {
+            width: 260px;
+            background: #1e1e2e;
+            border-right: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        /* Collapsible section */
+        .panel-section {
+            display: flex;
+            flex-direction: column;
+            border-bottom: 1px solid #333;
+            min-height: 0;
+        }
+        .panel-section.collapsed .panel-section-body { display: none; }
+        .panel-section:not(.collapsed) { flex: 1; }
+        .panel-section-header {
+            padding: 0.4rem 0.75rem;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #888;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            flex-shrink: 0;
+        }
+        .panel-section-header:hover { background: #252535; }
+        .panel-section-header .section-toggle {
+            font-size: 0.6rem;
+            transition: transform 0.15s;
+        }
+        .panel-section.collapsed .section-toggle { transform: rotate(-90deg); }
+        .panel-section-body {
+            flex: 1;
+            overflow-y: auto;
+        }
+        .panel-section-header-right {
+            display: flex;
+            gap: 2px;
+            align-items: center;
+        }
+        .layer-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        /* Palette */
+        .palette-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 0.4rem 0.5rem;
+            border-bottom: 1px solid #2a2a3a;
+        }
+        .palette-toolbar select {
+            flex: 1;
+            background: #333;
+            color: #ccc;
+            border: 1px solid #444;
+            border-radius: 3px;
+            padding: 2px 4px;
+            font-size: 0.75rem;
+            outline: none;
+        }
+        .palette-menu-btn {
+            width: 22px; height: 22px;
+            display: flex; align-items: center; justify-content: center;
+            background: #333; border: 1px solid #444; border-radius: 3px;
+            color: #aaa; cursor: pointer; font-size: 0.8rem;
+        }
+        .palette-menu-btn:hover { background: #444; color: #fff; }
+
+        .palette-menu {
+            position: fixed;
+            background: #2a2a3e;
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 4px 0;
+            min-width: 180px;
+            z-index: 200;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            display: none;
+        }
+        .palette-menu.visible { display: block; }
+        .palette-menu-item {
+            padding: 0.35rem 0.75rem;
+            font-size: 0.8rem;
+            color: #ccc;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .palette-menu-item:hover { background: #353550; color: #fff; }
+        .palette-menu-sep {
+            height: 1px;
+            background: #3a3a4a;
+            margin: 3px 0;
+        }
+
+        .palette-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+            padding: 0.5rem;
+            align-content: flex-start;
+        }
+        .palette-char {
+            font-family: var(--font-aa);
+            font-size: 16px;
+            line-height: 18px;
+            background: #fff;
+            color: #000;
+            border: 1px solid #444;
+            border-radius: 2px;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+        }
+        .palette-char:hover { border-color: #2196f3; background: #e3f2fd; }
+
+        /* Library MLT toolbar */
+        .mlt-toolbar {
+            padding: 0.3rem 0.5rem;
+            border-bottom: 1px solid #2a2a3a;
+        }
+        .mlt-toolbar select {
+            width: 100%;
+            background: #333;
+            color: #ccc;
+            border: 1px solid #444;
+            border-radius: 3px;
+            padding: 3px 4px;
+            font-size: 0.75rem;
+            outline: none;
+        }
+        .mlt-toolbar select:disabled { color: #666; }
+
+        /* Library */
+        .library-list {
+            padding: 0.5rem;
+        }
+        .library-item {
+            padding: 0.4rem 0.6rem;
+            border-radius: 4px;
+            margin-bottom: 0.25rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: 1px solid transparent;
+            color: #ccc;
+        }
+        .library-item:hover { background: #2a2a3e; }
+        .library-item .lib-preview {
+            font-family: var(--font-aa);
+            font-size: 10px;
+            line-height: 12px;
+            white-space: pre;
+            background: #fff;
+            color: #000;
+            border-radius: 2px;
+            padding: 2px 3px;
+            max-width: 50px;
+            max-height: 30px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .library-item .lib-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .library-item .lib-actions { display: flex; gap: 2px; }
+        .library-item .lib-actions .layer-btn { font-size: 0.65rem; }
+
+        .empty-hint {
+            padding: 1rem;
+            font-size: 0.75rem;
+            color: #555;
+            text-align: center;
+        }
+        .layer-item {
+            padding: 0.5rem 0.6rem;
+            border-radius: 4px;
+            margin-bottom: 0.25rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: 1px solid transparent;
+        }
+        .layer-item:hover { background: #2a2a3e; }
+        .layer-item.drag-over-above { border-top: 2px solid #2196f3 !important; }
+        .layer-item.drag-over-below { border-bottom: 2px solid #2196f3 !important; }
+        .layer-item.dragging-item { opacity: 0.4; }
+        .layer-item .drag-handle {
+            cursor: grab;
+            color: #555;
+            font-size: 0.75rem;
+            padding: 0 2px;
+            user-select: none;
+            flex-shrink: 0;
+        }
+        .layer-item .drag-handle:hover { color: #aaa; }
+        .layer-item .drag-handle:active { cursor: grabbing; }
+        .layer-item.selected { background: #1a2a3e; border-color: rgba(33,150,243,0.3); }
+        .layer-item.active { border-color: #2196f3; background: #1a2a4e; }
+        .layer-item .layer-color {
+            width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0;
+            cursor: pointer; position: relative;
+        }
+        .layer-item .layer-color input[type="color"] {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            opacity: 0; cursor: pointer;
+            border: none; padding: 0;
+        }
+        .layer-item .layer-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .layer-props-popup {
+            position: fixed;
+            background: #2a2a3e;
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 0.5rem 0.75rem;
+            min-width: 160px;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            display: none;
+        }
+        .layer-props-popup.visible { display: block; }
+        .layer-props-popup label {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.7rem;
+            color: #aaa;
+            margin-bottom: 0.3rem;
+        }
+        .layer-props-popup label:last-child { margin-bottom: 0; }
+        .layer-props-popup input[type="range"] {
+            flex: 1;
+            height: 3px;
+            background: #555;
+            border-radius: 2px;
+            -webkit-appearance: none;
+            outline: none;
+        }
+        .layer-props-popup input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 10px; height: 10px;
+            background: #2196f3;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .layer-item .layer-btn {
+            width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;
+            font-size: 0.7rem; color: #888; cursor: pointer; border-radius: 3px;
+        }
+        .layer-item .layer-btn:hover { background: #444; }
+        .layer-item .layer-btn.off { color: #444; }
+        .layer-item .layer-btn.locked { color: #e91e63; }
+
+        .layer-order-btns {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+        .layer-order-btns button {
+            width: 18px; height: 14px;
+            background: #333; border: none; color: #888;
+            cursor: pointer; font-size: 0.6rem; border-radius: 2px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .layer-order-btns button:hover { background: #555; color: #fff; }
+
+        /* Canvas area */
+        .canvas-area {
+            flex: 1;
+            overflow: auto;
+            background:
+                linear-gradient(90deg, #2a2a3a 1px, transparent 1px),
+                linear-gradient(#2a2a3a 1px, transparent 1px);
+            background-size: 20px 20px;
+            position: relative;
+            min-width: 0;
+        }
+
+        .canvas {
+            position: relative;
+            width: 600px;
+            height: 500px;
+            background: #e8e8e8;
+            margin: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+
+        .canvas-resize-handle {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 12px;
+            height: 12px;
+            cursor: nwse-resize;
+            z-index: 60;
+        }
+        .canvas-resize-handle::after {
+            content: '';
+            position: absolute;
+            bottom: 1px;
+            right: 1px;
+            width: 6px; height: 6px;
+            border-right: 1.5px solid rgba(0,0,0,0.3);
+            border-bottom: 1.5px solid rgba(0,0,0,0.3);
+        }
+
+        .canvas-safe-area {
+            position: absolute;
+            background: #fff;
+            overflow: hidden;
+            z-index: 0;
+            border: 0.5px solid rgba(0,0,0,0.15);
+        }
+
+        /* Rulers in margin area */
+        .canvas-ruler {
+            position: absolute;
+            z-index: 40;
+            pointer-events: none;
+        }
+        .canvas-ruler-top {
+            top: 0; left: 0;
+            width: 100%;
+            height: 30px;
+        }
+        .canvas-ruler-left {
+            top: 0; left: 0;
+            width: 30px;
+            height: 100%;
+        }
+
+        /* Layer guide beams */
+        .layer-guides {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 45;
+        }
+
+        .canvas-grid {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            display: none;
+        }
+        .canvas-grid.visible {
+            display: block;
+        }
+
+        /* Layer boxes on canvas */
+        .layer-box {
+            position: absolute;
+            border: 1px solid transparent;
+            cursor: default;
+            min-width: 40px;
+            min-height: 20px;
+        }
+        .layer-box.active {
+            border-color: rgba(33,150,243,0.5);
+        }
+        .layer-box.hovered:not(.active) {
+            border-color: rgba(76,175,80,0.5);
+        }
+        .layer-box.selected:not(.active) {
+            border-color: rgba(33,150,243,0.3);
+        }
+        .layer-box.image-layer { border-style: dashed; }
+        .layer-box.image-layer .layer-box-handle::after { border-color: transparent transparent rgba(255,152,0,0.6) transparent; }
+        .layer-box.image-layer.active .layer-box-handle::after { border-color: transparent transparent #ff9800 transparent; }
+        .layer-box.image-layer.active .layer-box-move::after { border-color: transparent rgba(255,152,0,0.6) transparent transparent; }
+        .layer-box.image-layer.active .layer-box-move::after { border-color: transparent #ff9800 transparent transparent; }
+
+        .layer-image {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        /* 비활성 레이어는 box 전체 통과, handle만 클릭 가능 */
+        .layer-box:not(.active) { pointer-events: none; }
+        .layer-box:not(.active) .layer-box-handle { pointer-events: auto; }
+
+        .layer-box.locked .layer-box-handle { display: none; }
+        .layer-box.locked .layer-textarea { pointer-events: none; opacity: 0.7; }
+
+        .layer-box-handle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            z-index: 5;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+        .layer-box:hover .layer-box-handle,
+        .layer-box.active .layer-box-handle {
+            opacity: 1;
+        }
+        .layer-box-handle::after {
+            content: '';
+            position: absolute;
+            width: 0; height: 0;
+            border-style: solid;
+        }
+
+        /* Move handle: top-right */
+        .layer-box-move {
+            top: 0; right: 0;
+            cursor: grab;
+        }
+        .layer-box-move:active { cursor: grabbing; }
+        .layer-box-move::after {
+            top: 0; right: 0;
+            border-width: 0 8px 8px 0;
+            border-color: transparent rgba(33,150,243,0.6) transparent transparent;
+        }
+        .layer-box.active .layer-box-move::after {
+            border-color: transparent #2196f3 transparent transparent;
+        }
+
+        /* Resize handle: bottom-right */
+        .layer-box-resize {
+            bottom: 0; right: 0;
+            cursor: nwse-resize;
+        }
+        .layer-box-resize::after {
+            bottom: 0; right: 0;
+            border-width: 0 0 8px 8px;
+            border-color: transparent transparent rgba(33,150,243,0.6) transparent;
+        }
+        .layer-box.active .layer-box-resize::after {
+            border-color: transparent transparent #2196f3 transparent;
+        }
+
+        /* Text editing inside layer */
+        .layer-edit-area {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .layer-display {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            height: 100%;
+            font-family: var(--font-aa);
+            font-size: 16px;
+            line-height: 18px;
+            white-space: pre;
+            color: #000;
+            padding: 4px;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .layer-textarea {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            height: 100%;
+            font-family: var(--font-aa);
+            font-size: 16px;
+            line-height: 18px;
+            white-space: pre;
+            color: transparent;
+            caret-color: #2196f3;
+            background: transparent;
+            border: none;
+            outline: none;
+            padding: 4px;
+            resize: none;
+            z-index: 2;
+        }
+
+        /* Preview panel */
+        .preview-panel {
+            width: 400px;
+            background: #1e1e2e;
+            border-left: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+        .preview-panel.collapsed {
+            width: auto !important;
+        }
+        .preview-panel.collapsed .preview-content,
+        .preview-panel.collapsed + .dummy { display: none; }
+
+        /* Bottom mode: canvas area becomes vertical flex */
+        .main.preview-bottom {
+            flex-direction: column;
+        }
+        .main.preview-bottom > .canvas-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        .main.preview-bottom > .canvas-container > .canvas-area {
+            flex: 1;
+        }
+        .main.preview-bottom .preview-panel {
+            width: 100% !important;
+            height: 250px;
+            border-left: none;
+            border-top: 1px solid #333;
+            flex-shrink: 0;
+        }
+        .main.preview-bottom .preview-panel.collapsed {
+            height: auto !important;
+        }
+        .main.preview-bottom #rightResize {
+            width: 100%;
+            height: 4px;
+            cursor: row-resize;
+        }
+        .preview-header {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #888;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .preview-content {
+            flex: 1;
+            overflow: auto;
+            padding: 12px;
+        }
+        .preview-text textarea {
+            font-family: var(--font-aa);
+            font-size: 16px;
+            line-height: 18px;
+            white-space: pre;
+            background: #fff;
+            color: #000;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 12px;
+            resize: none;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .preview-text {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+        .preview-text button {
+            margin-top: 0.25rem;
+            padding: 0.3rem 0.6rem;
+            background: #333; color: #ccc;
+            border: 1px solid #444; border-radius: 4px;
+            cursor: pointer; font-size: 0.75rem;
+        }
+        .preview-text button:hover { background: #2196f3; color: #fff; }
+
+        /* Tabs */
+        .tab-bar {
+            display: flex;
+            background: #1a1a2a;
+            border-bottom: 1px solid #333;
+            overflow-x: auto;
+            flex-shrink: 0;
+        }
+        .tab {
+            padding: 0.35rem 0.75rem;
+            font-size: 0.8rem;
+            color: #888;
+            cursor: pointer;
+            border-right: 1px solid #2a2a3a;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+            user-select: none;
+        }
+        .tab:hover { color: #ccc; background: #252535; }
+        .tab.active { color: #e0e0e0; background: #2a2a3e; border-bottom: 2px solid #2196f3; }
+        .tab-close {
+            font-size: 0.7rem;
+            color: #666;
+            cursor: pointer;
+            padding: 0 2px;
+            border-radius: 2px;
+        }
+        .tab-close:hover { color: #f44; background: rgba(255,50,50,0.15); }
+        .tab-add {
+            color: #666;
+            font-size: 1rem;
+            padding: 0.35rem 0.6rem;
+        }
+        .tab-add:hover { color: #2196f3; }
+        .tab-name-input {
+            background: #333;
+            color: #e0e0e0;
+            border: 1px solid #2196f3;
+            border-radius: 2px;
+            padding: 0 4px;
+            font-size: 0.8rem;
+            outline: none;
+            width: 80px;
+        }
+
+        /* Panel resize handles */
+        .panel-resize {
+            width: 4px;
+            cursor: col-resize;
+            background: transparent;
+            flex-shrink: 0;
+            transition: background 0.15s;
+        }
+        .panel-resize:hover,
+        .panel-resize.dragging {
+            background: rgba(33,150,243,0.4);
+        }
+
+        /* Status */
+        /* Quick Edit Modal */
+        /* Input Modal */
+        .input-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        .input-modal-overlay.visible { display: flex; }
+        .input-modal {
+            background: #222;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 1.25rem;
+            min-width: 280px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        .input-modal-title {
+            font-size: 0.9rem;
+            color: #ccc;
+            margin-bottom: 0.75rem;
+        }
+        .input-modal input[type="text"] {
+            width: 100%;
+            background: #333;
+            color: #e0e0e0;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 0.4rem 0.6rem;
+            font-size: 0.85rem;
+            outline: none;
+            margin-bottom: 0.75rem;
+        }
+        .input-modal input[type="text"]:focus { border-color: #2196f3; }
+        .input-modal-btns {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.4rem;
+        }
+        .input-modal-btns button {
+            padding: 0.35rem 0.75rem;
+            border: 1px solid #444;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .input-modal-btns .btn-cancel { background: #333; color: #ccc; }
+        .input-modal-btns .btn-cancel:hover { background: #444; }
+        .input-modal-btns .btn-ok { background: #2196f3; color: #fff; border-color: #2196f3; }
+        .input-modal-btns .btn-ok:hover { background: #1976d2; }
+        .input-modal-btns .btn-danger { background: #c62828; color: #fff; border-color: #c62828; }
+        .input-modal-btns .btn-danger:hover { background: #e53935; }
+
+        .qe-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .qe-overlay.visible { display: flex; }
+
+        .qe-modal {
+            background: #222;
+            border: 1px solid #444;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            max-width: 90vw;
+            max-height: 90vh;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+            overflow: hidden;
+        }
+        .qe-header {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: #ccc;
+        }
+        .qe-header-btns { display: flex; gap: 4px; }
+        .qe-header-btns button {
+            padding: 0.3rem 0.7rem;
+            background: #333;
+            color: #ccc;
+            border: 1px solid #444;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .qe-header-btns button:hover { background: #444; }
+        .qe-header-btns button.primary { background: #2196f3; color: #fff; border-color: #2196f3; }
+        .qe-header-btns button.primary:hover { background: #1976d2; }
+
+        .qe-body {
+            display: flex;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            overflow: hidden;
+        }
+
+        .qe-canvas-wrap {
+            position: relative;
+            background: #fff;
+            border: 1px solid #444;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .qe-canvas-wrap img {
+            position: absolute;
+            pointer-events: none;
+        }
+        .qe-canvas-wrap textarea {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            font-family: var(--font-aa);
+            font-size: 16px;
+            line-height: 18px;
+            white-space: pre;
+            background: transparent;
+            color: #000;
+            caret-color: #2196f3;
+            border: none;
+            outline: none;
+            padding: 4px;
+            resize: none;
+            z-index: 2;
+        }
+        .qe-canvas-wrap .qe-display {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            font-family: var(--font-aa);
+            font-size: 16px;
+            line-height: 18px;
+            white-space: pre;
+            color: #000;
+            padding: 4px;
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        .qe-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            min-width: 160px;
+        }
+        .qe-sidebar label {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            font-size: 0.75rem;
+            color: #aaa;
+        }
+        .qe-sidebar input[type="range"] {
+            width: 100%;
+            height: 3px;
+            background: #555;
+            border-radius: 2px;
+            -webkit-appearance: none;
+            outline: none;
+        }
+        .qe-sidebar input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 10px; height: 10px;
+            background: #2196f3;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .qe-img-move {
+            position: absolute;
+            top: 0; right: 0;
+            width: 12px; height: 12px;
+            cursor: grab;
+            z-index: 10;
+            opacity: 0.6;
+        }
+        .qe-img-move:active { cursor: grabbing; }
+        .qe-img-move::after {
+            content: '';
+            position: absolute;
+            top: 0; right: 0;
+            width: 0; height: 0;
+            border-style: solid;
+            border-width: 0 12px 12px 0;
+            border-color: transparent #ff9800 transparent transparent;
+        }
+
+        .qe-canvas-resize {
+            position: absolute;
+            bottom: 0; right: 0;
+            width: 10px; height: 10px;
+            cursor: nwse-resize;
+            z-index: 10;
+        }
+        .qe-canvas-resize::after {
+            content: '';
+            position: absolute;
+            bottom: 1px; right: 1px;
+            width: 0; height: 0;
+            border-style: solid;
+            border-width: 0 0 8px 8px;
+            border-color: transparent transparent rgba(33,150,243,0.6) transparent;
+        }
+
+        .status-bar {
+            background: #222;
+            padding: 0.4rem 1rem;
+            border-top: 1px solid #333;
+            font-size: 0.75rem;
+            color: #666;
+            display: flex;
+            gap: 2rem;
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>POC 3: Layer Editor</h1>
+    <div class="toolbar">
+        <button onclick="mergeSelectedLayers()">레이어 병합</button>
+        <button onclick="openQuickEdit()">레이어 캔버스</button>
+        <input type="file" id="imageInput" accept="image/*" style="display:none;">
+        <button id="snapBtn" class="active" onclick="toggleSnap()">스냅 ON</button>
+        <button id="gridBtn" class="active" onclick="toggleGrid()">그리드</button>
+        <button id="charGridBtn" onclick="toggleCharGrid()">문자 그리드</button>
+    </div>
+</header>
+
+<div class="tab-bar" id="tabBar"></div>
+<div class="main">
+    <!-- Left Panel -->
+    <div class="left-panel" id="leftPanel">
+        <!-- Layers Section -->
+        <div class="panel-section" id="sectionLayers">
+            <div class="panel-section-header" onclick="toggleSection('sectionLayers')">
+                <div style="display:flex;align-items:center;gap:4px;">
+                    <span class="section-toggle">▼</span>
+                    <span>레이어</span>
+                </div>
+                <div class="panel-section-header-right">
+                    <div class="layer-btn" title="텍스트 레이어 추가" onclick="event.stopPropagation();addLayer()" style="cursor:pointer;">＋</div>
+                    <div class="layer-btn" title="이미지 레이어 추가" onclick="event.stopPropagation();addImageLayer()" style="cursor:pointer;">🖼</div>
+                </div>
+            </div>
+            <div class="panel-section-body">
+                <div class="layer-list" id="layerList"></div>
+            </div>
+        </div>
+
+        <!-- Palette Section -->
+        <div class="panel-section collapsed" id="sectionPalette">
+            <div class="panel-section-header" onclick="toggleSection('sectionPalette')">
+                <div style="display:flex;align-items:center;gap:4px;">
+                    <span class="section-toggle">▼</span>
+                    <span>팔레트</span>
+                </div>
+            </div>
+            <div class="panel-section-body">
+                <div class="palette-toolbar">
+                    <select id="paletteSetSelect" onchange="switchPaletteSet()"></select>
+                    <div class="palette-menu-btn" id="paletteMenuBtn" title="팔레트 메뉴">⋮</div>
+                </div>
+                <div class="palette-grid" id="paletteGrid"></div>
+            </div>
+        </div>
+        <!-- Palette context menu (appended to body) -->
+        <div class="palette-menu" id="paletteMenu">
+            <div class="palette-menu-item" onclick="paletteAction('addChar')">캐릭터 추가</div>
+            <div class="palette-menu-item" onclick="paletteAction('addPalette')">팔레트 추가</div>
+            <div class="palette-menu-sep"></div>
+            <div class="palette-menu-item" onclick="paletteAction('importPalette')">팔레트 임포트 (.wap)</div>
+            <div class="palette-menu-item" onclick="paletteAction('exportPalette')">팔레트 익스포트 (.wap)</div>
+            <div class="palette-menu-sep"></div>
+            <div class="palette-menu-item" onclick="paletteAction('importSet')">팔레트세트 임포트 (.waps)</div>
+            <div class="palette-menu-item" onclick="paletteAction('exportSet')">팔레트세트 익스포트 (.waps)</div>
+        </div>
+
+        <!-- Library (MLT) Section -->
+        <div class="panel-section collapsed" id="sectionLibrary">
+            <div class="panel-section-header" onclick="toggleSection('sectionLibrary')">
+                <div style="display:flex;align-items:center;gap:4px;">
+                    <span class="section-toggle">▼</span>
+                    <span>라이브러리 (MLT)</span>
+                </div>
+                <div class="panel-section-header-right">
+                    <div class="layer-btn" title="MLT 디렉토리 선택" onclick="event.stopPropagation();loadMLTDir()" style="cursor:pointer;">📂</div>
+                </div>
+            </div>
+            <div class="panel-section-body">
+                <div class="mlt-toolbar">
+                    <select id="mltFileSelect" onchange="onMLTFileSelect()" disabled>
+                        <option>디렉토리를 선택하세요</option>
+                    </select>
+                </div>
+                <div class="mlt-toolbar">
+                    <select id="mltSectionSelect" onchange="onMLTSectionSelect()" disabled>
+                        <option>—</option>
+                    </select>
+                </div>
+                <div class="library-list" id="libraryList">
+                    <div class="empty-hint">MLT 디렉토리를 불러오세요</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="panel-resize" id="leftResize"></div>
+
+    <!-- Canvas -->
+    <div class="canvas-area" id="canvasArea">
+        <div class="canvas" id="canvas">
+            <div class="canvas-resize-handle" id="canvasResizeHandle"></div>
+            <canvas class="canvas-ruler canvas-ruler-top" id="rulerTop"></canvas>
+            <canvas class="canvas-ruler canvas-ruler-left" id="rulerLeft"></canvas>
+            <canvas class="layer-guides" id="layerGuides"></canvas>
+
+            <div class="canvas-safe-area" id="safeArea">
+                <canvas class="canvas-grid visible" id="canvasGrid"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel-resize" id="rightResize"></div>
+    <!-- Preview -->
+    <div class="preview-panel">
+        <div class="preview-header">
+            <span>합성 결과</span>
+            <div style="display:flex;gap:4px;">
+                <button onclick="copyPreview()" style="padding:2px 8px;background:#333;color:#aaa;border:1px solid #444;border-radius:3px;cursor:pointer;font-size:0.7rem;">복사</button>
+                <button onclick="togglePreviewPosition()" id="previewPosBtn" style="padding:2px 8px;background:#333;color:#aaa;border:1px solid #444;border-radius:3px;cursor:pointer;font-size:0.7rem;">▼ 하단</button>
+                <button onclick="togglePreviewCollapse()" id="previewCollapseBtn" style="padding:2px 8px;background:#333;color:#aaa;border:1px solid #444;border-radius:3px;cursor:pointer;font-size:0.7rem;">접기</button>
+            </div>
+        </div>
+        <div class="preview-content">
+            <div class="preview-text">
+                <textarea id="previewTextarea" readonly placeholder="합성 결과가 여기에 표시됩니다..."></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Input Modal -->
+<div class="input-modal-overlay" id="inputModalOverlay">
+    <div class="input-modal">
+        <div class="input-modal-title" id="inputModalTitle"></div>
+        <input type="text" id="inputModalInput" style="display:none;">
+        <div class="input-modal-btns" id="inputModalBtns"></div>
+    </div>
+</div>
+
+<!-- Quick Edit Modal -->
+<div class="qe-overlay" id="qeOverlay">
+    <div class="qe-modal">
+        <div class="qe-header">
+            <span>레이어 캔버스</span>
+            <div class="qe-header-btns">
+                <button onclick="qeLoadImage()">이미지 불러오기</button>
+                <button class="primary" onclick="qeInsert()">레이어로 삽입</button>
+                <button onclick="qeClose()">닫기</button>
+            </div>
+        </div>
+        <div class="qe-body">
+            <div class="qe-canvas-wrap" id="qeCanvas" style="width:400px;height:300px;">
+                <img id="qeImg" style="display:none;">
+                <div class="qe-img-move" id="qeImgMove"></div>
+                <div class="qe-canvas-resize" id="qeCanvasResize"></div>
+                <div class="qe-display" id="qeDisplay"></div>
+                <textarea id="qeTextarea" spellcheck="false"></textarea>
+            </div>
+            <div class="qe-sidebar">
+                <label>
+                    이미지 크기 <span id="qeScaleVal">100%</span>
+                    <input type="range" id="qeScale" min="10" max="500" value="100">
+                </label>
+                <label>
+                    이미지 투명도 <span id="qeOpacityVal">50%</span>
+                    <input type="range" id="qeOpacity" min="0" max="100" value="50">
+                </label>
+                <label>
+                    글씨색
+                    <input type="color" id="qeTextColor" value="#000000" style="width:100%;height:24px;border:1px solid #444;border-radius:3px;background:#333;cursor:pointer;">
+                </label>
+            </div>
+        </div>
+    </div>
+    <input type="file" id="qeFileInput" accept="image/*" style="display:none;">
+</div>
+
+<div class="status-bar">
+    <span id="statusText">Ready</span>
+    <span id="activeLayerInfo">-</span>
+    <span id="cursorInfo">-</span>
+</div>
+
+<script>
+    const CANVAS_FONT = '"ＭＳ Ｐゴシック", "MS PGothic", "IPAMonaPGothic", Mona, Monapo, Saitamaar, NanumGothicCoding, monospace';
+    const FONT_SIZE = 16;
+    const LINE_HEIGHT = 18;
+    const LAYER_PADDING = 4; // padding inside layer box
+    const CANVAS_MARGIN = 30; // bleed/crop area around safe zone
+
+    const canvasEl = document.getElementById('canvas');
+    const layerListEl = document.getElementById('layerList');
+    const canvasGrid = document.getElementById('canvasGrid');
+    const safeArea = document.getElementById('safeArea');
+
+    let snapEnabled = true;
+    let gridVisible = true;
+    let isDraggingLayer = false;
+    let layerClipboard = null; // copied layer data
+    let SNAP_X = 1; // will be measured from half-width char
+
+    const LAYER_COLORS = ['#2196f3', '#4caf50', '#ff9800', '#e91e63', '#9c27b0', '#00bcd4', '#ff5722', '#8bc34a'];
+
+    /*
+     * ====================================================================
+     * wAA — AA (Yaruo) Art Editor
+     * ====================================================================
+     *
+     * ── 앱 개요 ────────────────────────────────────────────────
+     *
+     * 일본 AA(아스키 아트, 야루오계) 전문 에디터.
+     * 프로포셔널 폰트(MS PGothic / Saitamaar) 기반의 AA를
+     * 레이어 합성 방식으로 편집하는 데스크탑 앱.
+     *
+     * 기술 스택 (production):
+     *   - Tauri v2 (Rust + Web)
+     *   - 프론트엔드: 미정 (Vanilla / Svelte / React)
+     *   - 파일 저장: 파일 시스템 기반 (JSON)
+     *   - 폰트: Saitamaar (번들), NanumGothicCoding (한글 폴백)
+     *
+     * ── 다국어 (i18n) ─────────────────────────────────────────
+     *
+     * 지원 언어: 한국어(ko), 일본어(ja), 영어(en)
+     * 기본값: 시스템 언어 감지 (navigator.language → ko/ja/en 매핑)
+     * 설정 모달에서 드롭다운으로 수동 선택 가능
+     *
+     * 구현 방식:
+     *   - i18n 키-값 사전 (언어별 JSON 또는 객체)
+     *   - t('key') 함수로 번역 텍스트 반환
+     *   - 언어 변경 시 UI 전체 리렌더 (또는 reactive binding)
+     *   - 설정은 AppConfig.locale에 저장
+     *
+     * I18N keys 예시:
+     *   'layer.add'        → '텍스트 레이어 추가' / 'テキストレイヤー追加' / 'Add Text Layer'
+     *   'palette.addChar'  → '캐릭터 추가' / 'キャラクター追加' / 'Add Character'
+     *   'preview.copy'     → '복사' / 'コピー' / 'Copy'
+     *   'settings.language' → '언어' / '言語' / 'Language'
+     *   'settings.theme'   → '테마' / 'テーマ' / 'Theme'
+     *
+     * ── 테마 (라이트/다크 모드) ────────────────────────────────
+     *
+     * 모드: system / light / dark
+     * 기본값: system (prefers-color-scheme 미디어 쿼리 따름)
+     * 설정 모달에서 드롭다운으로 수동 선택 가능
+     *
+     * 구현 방식:
+     *   - CSS custom properties (--bg-primary, --text-primary, 등)
+     *   - document.body에 data-theme="light|dark" 속성
+     *   - system 모드: matchMedia('(prefers-color-scheme: dark)') 감지
+     *     → 시스템 설정 변경 시 자동 전환 (addEventListener 'change')
+     *   - 설정은 AppConfig.theme에 저장 ('system' | 'light' | 'dark')
+     *
+     * ── 설정 모달 (AppConfig UI) ──────────────────────────────
+     *
+     * 설정 항목:
+     *   - 언어: 드롭다운 (한국어 / 日本語 / English)
+     *   - 테마: 드롭다운 (시스템 / 라이트 / 다크)
+     *   - MLT 디렉토리: 경로 표시 + 변경 버튼
+     *   - 팔레트세트 경로: (고정, 표시만)
+     *
+     * 설정 저장: AppConfig를 앱 설정 디렉토리에 JSON으로 저장
+     *   Tauri: app_config_dir() / config.json
+     *
+     * ── 아이콘 & 버튼 ─────────────────────────────────────────
+     *
+     * 아이콘 세트: 오픈소스 아이콘 라이브러리 사용 (Lucide / Tabler Icons 등)
+     *   - 일관된 스타일 (stroke, 동일 크기, 동일 두께)
+     *   - SVG 인라인 또는 아이콘 컴포넌트로 사용
+     *   - POC에서는 이모지/텍스트로 대체 중, production에서 교체
+     *
+     * 버튼 목록 (위치 → 아이콘 → 동작):
+     *
+     *   [헤더 툴바]
+     *   - 레이어 병합     — merge icon      — 선택된 텍스트 레이어들을 합성하여 하나로
+     *   - 레이어 캔버스   — canvas icon     — 간이 편집 모달 열기
+     *   - 스냅 ON/OFF    — magnet icon     — 스냅 토글
+     *   - 그리드          — grid icon       — 캔버스 그리드 표시 토글
+     *   - 문자 그리드     — text-grid icon  — 문자별 색상 교차 표시 토글
+     *
+     *   [레이어 패널 헤더]
+     *   - ＋ (텍스트)     — plus icon       — 텍스트 레이어 추가
+     *   - 🖼 (이미지)    — image icon      — 이미지 레이어 추가
+     *
+     *   [레이어 아이템]
+     *   - ⠿ (드래그)     — grip icon       — 드래그로 레이어 순서 변경
+     *   - 색상 원         — (color swatch)  — 클릭하면 color picker (텍스트 색상)
+     *   - ⚙ (속성)       — settings icon   — 속성 팝업 (투명도 등)
+     *   - 🔒/🔓 (잠금)   — lock/unlock     — 레이어 잠금 토글
+     *   - 👁/— (가시성)  — eye/eye-off     — 레이어 표시/숨김 토글
+     *   - 🗑 (삭제)      — trash icon      — 레이어 삭제
+     *
+     *   [캔버스 위 레이어]
+     *   - ▶ (우상단 삼각) — (triangle)      — 드래그로 레이어 이동
+     *   - ▶ (우하단 삼각) — (triangle)      — 드래그로 레이어 크기 조절
+     *
+     *   [탭 바]
+     *   - + (새 문서)     — plus icon       — 새 문서(탭) 추가
+     *   - × (닫기)       — x icon          — 문서(탭) 닫기
+     *
+     *   [팔레트 섹션]
+     *   - ⋮ (메뉴)       — dots-vertical   — 팔레트 메뉴 (추가/임포트/익스포트)
+     *
+     *   [라이브러리(MLT) 섹션]
+     *   - 📂 (디렉토리)  — folder icon     — MLT 디렉토리 선택
+     *
+     *   [합성 결과 패널]
+     *   - 복사            — copy icon       — 합성 결과 클립보드 복사
+     *   - ▼하단/▶우측    — layout icon     — 패널 위치 전환
+     *   - 접기/펼치기     — chevron icon    — 패널 접기 토글
+     *
+     *   [캔버스]
+     *   - 우하단 핸들     — (resize grip)   — 캔버스 크기 조절
+     *
+     * ── 합성 결과 패널 배치 ──────────────────────────────────
+     *
+     * 배치 모드: right | bottom | detached
+     *   - right:    메인 윈도우 우측 (기본)
+     *   - bottom:   메인 윈도우 하단
+     *   - detached: 별도 윈도우 (Tauri WebviewWindow)
+     *
+     * 별도 윈도우 구현 (Tauri):
+     *   - WebviewWindow.create()로 새 창 생성
+     *   - 메인 → 프리뷰: Tauri event emit으로 합성 결과 전송
+     *   - 프리뷰 창은 이벤트 수신하여 textarea 갱신
+     *   - 프리뷰 창 닫으면 자동으로 right 모드로 복귀
+     *   - 프리뷰 창 위치/크기는 AppConfig에 저장하여 복원
+     *
+     *   예시 (Rust/JS):
+     *     // 메인에서 별도 창 열기
+     *     const preview = new WebviewWindow('preview', {
+     *       url: '/preview.html',
+     *       title: '합성 결과',
+     *       width: 500, height: 600,
+     *     });
+     *
+     *     // 합성 결과 전송
+     *     emit('preview-update', { text: compositeResult });
+     *
+     *     // preview.html에서 수신
+     *     listen('preview-update', (e) => {
+     *       document.getElementById('previewTextarea').value = e.payload.text;
+     *     });
+     *
+     * AppConfig 추가 필드:
+     *   previewMode:   'right' | 'bottom' | 'detached'
+     *   previewWindow: { x, y, width, height } | null  — detached 시 창 위치 복원
+     *
+     * ── 매뉴얼 ────────────────────────────────────────────────
+     *
+     * production 빌드 시 매뉴얼 작성 필수.
+     *
+     * 매뉴얼 요구사항:
+     *   - 다국어 매뉴얼 (ko, ja, en) — 앱 언어 설정에 맞춰 표시
+     *   - 앱 내 도움말 모달 또는 외부 문서 (HTML/PDF)
+     *   - 모든 버튼/아이콘에 대한 설명 포함
+     *   - 아이콘만 있는 버튼(텍스트 없음)의 경우:
+     *     매뉴얼에 해당 아이콘 이미지를 인라인으로 명시
+     *     예: "🗑 (휴지통 아이콘) — 선택된 레이어를 삭제합니다"
+     *   - 단축키 목록 포함:
+     *     Ctrl+Z / Ctrl+Shift+Z — 되돌리기 / 다시 실행
+     *     Ctrl+C / Ctrl+V — 레이어 복사 / 붙여넣기 (탭 포커스 시 문서 단위)
+     *     Ctrl+Shift+C/V — 문서 복사 / 붙여넣기 (탭 포커스 시)
+     *     Spacebar — 도트 문자 순환 입력 (좁은 → 넓은)
+     *     Escape — 선택 해제, 모달 닫기
+     *   - 스크린샷 포함 권장 (UI 영역별 번호 매겨서 설명)
+     *
+     * ====================================================================
+     * 데이터 구조 & 파일 형식 & 저장 정책 (→ TS interfaces later)
+     * ====================================================================
+     *
+     * ── 파일 형식 ──────────────────────────────────────────────
+     *
+     *   .aaproj  — 프로젝트 파일 (JSON)
+     *              프로젝트 메타 + 모든 문서를 포함
+     *              앱은 항상 하나의 .aaproj를 열고 있음
+     *              저장 시 이 파일에 바로 쓰기
+     *              앱 내에서 프로젝트 파일 교체(열기) 가능
+     *
+     *   .aadoc   — 문서 파일 (JSON)
+     *              문서 단위 export/import용
+     *              프로젝트에서 문서를 꺼내거나, 외부 문서를 가져올 때 사용
+     *
+     *   .aapals  — 팔레트세트 파일 (JSON)
+     *              앱 설정 영역에 항상 하나 존재 (고정 위치)
+     *              팔레트세트 변경 시 즉시 이 파일에 저장
+     *              팔레트세트 import 시 이 파일을 교체
+     *              팔레트세트 export로 공유 가능
+     *
+     *   .aapal   — 단일 팔레트 파일 (JSON)
+     *              팔레트 단위 export/import용
+     *
+     *   .mlt     — MLT 파일 (외부, 읽기 전용)
+     *              앱이 직접 관리하지 않음
+     *              사용자가 원하는 디렉토리에 보관
+     *              앱 설정에서 해당 디렉토리 경로만 기억
+     *              수정 불가, AA 선택 → 레이어로 삽입만 가능
+     *
+     * ── 데이터 구조 ────────────────────────────────────────────
+     *
+     * ProjectFile (.aaproj) {
+     *   version:    number          — 파일 포맷 버전
+     *   name:       string          — 프로젝트 이름
+     *   documents:  Document[]      — 문서 목록
+     *   activeDocId: number         — 현재 활성 문서 ID
+     *   nextDocId:  number          — 문서 ID auto-increment
+     * }
+     *
+     * Document (.aadoc export 시 동일 구조) {
+     *   id:          number         — unique ID
+     *   name:        string         — 탭에 표시되는 문서 이름
+     *   canvas: {
+     *     width:     number         — 캔버스 전체 폭 (px, margin 포함)
+     *     height:    number         — 캔버스 전체 높이 (px, margin 포함)
+     *   }
+     *   layers:      Layer[]        — 레이어 목록 (순서 = 합성 순서, 0=bottom)
+     *   activeLayerId: number|null
+     *   nextLayerId: number         — 레이어 ID auto-increment
+     *   viewSettings: {             — 문서별 뷰 설정 (편집 상태 복원용)
+     *     snapEnabled:    boolean   — 스냅 온/오프
+     *     gridVisible:    boolean   — 그리드 표시 여부
+     *     charGridEnabled: boolean  — 문자 그리드 표시 여부
+     *   }
+     * }
+     *
+     * Layer {
+     *   id:        number           — unique ID (문서 내)
+     *   type:      'text' | 'image' — 레이어 타입
+     *   name:      string           — display name, user-editable
+     *   x:         number           — position X in safe area (px)
+     *   y:         number           — position Y in safe area (px)
+     *   w:         number           — box width (px)
+     *   h:         number           — box height (px)
+     *   visible:   boolean          — 캔버스에 보이는지 여부
+     *   locked:    boolean          — true면 이동/편집 불가
+     *   color:     string           — UI 구분용 색상 (hex)
+     *   textColor: string           — 텍스트 렌더링 색상 (hex)
+     *   opacity:   number           — 0~1
+     *
+     *   // type === 'text'
+     *   text:      string           — AA text content (newline-separated)
+     *
+     *   // type === 'image' (참고용, 합성 결과에 미포함)
+     *   imageSrc:  string           — data URL
+     * }
+     *
+     * PaletteSetFile (.aapals) {
+     *   version:   number
+     *   name:      string           — 세트 이름
+     *   palettes:  Palette[]        — 팔레트 목록
+     * }
+     *
+     * Palette (.aapal export 시 동일 구조) {
+     *   name:      string           — 팔레트 이름
+     *   chars:     string[]         — 단일 캐릭터 목록
+     * }
+     *
+     * ── 앱 설정 (production) ───────────────────────────────────
+     *
+     * AppConfig (config.json, app_config_dir에 저장) {
+     *   locale:         'system' | 'ko' | 'ja' | 'en' — 언어 설정
+     *   theme:          'system' | 'light' | 'dark'   — 테마 설정
+     *   paletteSetPath: string      — .aapals 파일 경로 (고정 위치)
+     *   mltDirPath:     string      — MLT 디렉토리 경로
+     *   recentProjects: string[]    — 최근 열었던 .aaproj 경로 목록
+     *   previewMode:    'right' | 'bottom' | 'detached' — 합성 결과 패널 배치
+     *   previewWindow:  { x, y, width, height } | null  — detached 창 위치/크기
+     * }
+     *
+     * ── 저장 정책 ──────────────────────────────────────────────
+     *
+     * 프로젝트:
+     *   - 항상 하나의 .aaproj를 열고 작업
+     *   - 저장(Ctrl+S) 시 .aaproj 파일에 바로 덮어쓰기
+     *   - 다른 이름 저장(Ctrl+Shift+S)으로 새 .aaproj 생성
+     *   - 앱 내에서 다른 .aaproj 열기 가능
+     *
+     * 문서:
+     *   - 프로젝트 파일에 포함되어 저장됨
+     *   - 개별 문서를 .aadoc로 export/import 가능
+     *
+     * 팔레트:
+     *   - 앱 설정 영역의 .aapals에 즉시 저장 (변경 즉시)
+     *   - .aapals import 시 기존 세트 교체
+     *   - 개별 팔레트를 .aapal로 export/import 가능
+     *
+     * MLT:
+     *   - 앱이 관리하지 않음, 읽기 전용
+     *   - 설정에서 디렉토리 경로만 기억
+     *   - AA 선택 → 현재 문서에 레이어로 삽입
+     *
+     * ── Export ──────────────────────────────────────────────
+     *
+     * 텍스트 Export:
+     *   - 합성 결과를 .txt 파일로 내보내기
+     *   - 현재 문서의 합성 결과 (compositeLayers) 그대로
+     *   - 인코딩: UTF-8
+     *   - 합성 결과 패널의 "복사" 버튼은 클립보드, Export는 파일 저장
+     *   - 메뉴/단축키에서 접근 (파일 → 텍스트로 내보내기)
+     *
+     * ── 런타임 전용 (파일에 저장 안 됨) ───────────────────────
+     *
+     * LayerClipboard { name, type, text, x, y, w, h, textColor, opacity, imageSrc }
+     * DragState { type, layerId, startX/Y, origX/Y, origW/H }
+     * UndoStack / RedoStack — 세션 내 스냅샷
+     */
+
+    // ===================== PROJECT / DOCUMENT STATE =====================
+
+    let project = {
+        name: 'Untitled Project',
+        documents: [],
+        activeDocId: null,
+        nextDocId: 0,
+    };
+
+    // Shorthand accessors for active document
+    function activeDoc() {
+        return project.documents.find(d => d.id === project.activeDocId) || null;
+    }
+
+    function createDocument(name = '새 문서') {
+        const id = project.nextDocId++;
+        const doc = {
+            id,
+            name,
+            canvas: { width: 600, height: 500 },
+            layers: [],
+            activeLayerId: null,
+            nextLayerId: 0,
+        };
+        project.documents.push(doc);
+        return doc;
+    }
+
+    function switchDocument(docId) {
+        // Save current state
+        saveCurrentDocState();
+        project.activeDocId = docId;
+        restoreDocState();
+        renderTabs();
+        renderLayerList();
+        compositeAndPreview();
+        setStatus(`문서 전환: ${activeDoc()?.name}`);
+    }
+
+    function closeDocument(docId) {
+        const idx = project.documents.findIndex(d => d.id === docId);
+        if (idx === -1) return;
+        if (project.documents.length === 1) {
+            setStatus('마지막 문서는 닫을 수 없습니다');
+            return;
+        }
+        project.documents.splice(idx, 1);
+        if (project.activeDocId === docId) {
+            const newIdx = Math.min(idx, project.documents.length - 1);
+            project.activeDocId = project.documents[newIdx].id;
+            restoreDocState();
+        }
+        renderTabs();
+        renderLayerList();
+        compositeAndPreview();
+    }
+
+    // Save live UI state back into the active document
+    function saveCurrentDocState() {
+        const doc = activeDoc();
+        if (!doc) return;
+        doc.layers = layers;
+        doc.activeLayerId = activeLayerId;
+        doc.selectedLayerIds = [...selectedLayerIds];
+        doc.nextLayerId = nextLayerId;
+        doc.canvas.width = canvasEl.offsetWidth;
+        doc.canvas.height = canvasEl.offsetHeight;
+    }
+
+    // Restore document state into live variables and rebuild UI
+    function restoreDocState() {
+        const doc = activeDoc();
+        if (!doc) return;
+
+        // Clear canvas
+        safeArea.querySelectorAll('.layer-box').forEach(el => el.remove());
+
+        layers = doc.layers;
+        activeLayerId = doc.activeLayerId;
+        selectedLayerIds = new Set(doc.selectedLayerIds || []);
+        nextLayerId = doc.nextLayerId;
+
+        canvasEl.style.width = doc.canvas.width + 'px';
+        canvasEl.style.height = doc.canvas.height + 'px';
+
+        updateSafeArea();
+        drawGrid();
+
+        // Re-render layer boxes
+        layers.forEach(layer => renderLayerOnCanvas(layer));
+        updateActiveVisual();
+        drawLayerGuides();
+    }
+
+    // ===================== TABS =====================
+
+    function renderTabs() {
+        const tabBar = document.getElementById('tabBar');
+        tabBar.innerHTML = '';
+        project.documents.forEach(doc => {
+            const tab = document.createElement('div');
+            tab.className = 'tab' + (doc.id === project.activeDocId ? ' active' : '');
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'tab-name';
+            nameSpan.textContent = doc.name;
+            nameSpan.addEventListener('mousedown', () => {
+                if (doc.id !== project.activeDocId) switchDocument(doc.id);
+            });
+            tab.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                if (doc.id !== project.activeDocId) switchDocument(doc.id);
+                copyDocument();
+                pasteDocument();
+            });
+            nameSpan.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                const input = document.createElement('input');
+                input.className = 'tab-name-input';
+                input.value = doc.name;
+                nameSpan.replaceWith(input);
+                input.focus();
+                input.select();
+                const commit = () => {
+                    const val = input.value.trim();
+                    if (val) doc.name = val;
+                    renderTabs();
+                };
+                input.addEventListener('blur', commit);
+                input.addEventListener('keydown', (ev) => {
+                    if (ev.key === 'Enter') input.blur();
+                    if (ev.key === 'Escape') { input.value = doc.name; input.blur(); }
+                });
+            });
+            tab.appendChild(nameSpan);
+
+            if (project.documents.length > 1) {
+                const closeBtn = document.createElement('span');
+                closeBtn.className = 'tab-close';
+                closeBtn.textContent = '×';
+                closeBtn.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    closeDocument(doc.id);
+                });
+                tab.appendChild(closeBtn);
+            }
+
+            tabBar.appendChild(tab);
+        });
+
+        // Add tab button
+        const addBtn = document.createElement('div');
+        addBtn.className = 'tab tab-add';
+        addBtn.textContent = '+';
+        addBtn.addEventListener('mousedown', () => {
+            saveCurrentDocState();
+            const doc = createDocument();
+            project.activeDocId = doc.id;
+            restoreDocState();
+            renderTabs();
+            renderLayerList();
+            compositeAndPreview();
+        });
+        tabBar.appendChild(addBtn);
+    }
+
+    let docClipboard = null; // copied document data
+    let tabBarFocused = false; // true when tab bar was last clicked
+
+    function copyDocument() {
+        saveCurrentDocState();
+        const doc = activeDoc();
+        if (!doc) return;
+        docClipboard = JSON.parse(JSON.stringify(doc));
+        delete docClipboard.id;
+        setStatus(`문서 "${doc.name}" 복사됨`);
+    }
+
+    function pasteDocument() {
+        if (!docClipboard) return;
+        saveCurrentDocState();
+        const newDoc = createDocument(docClipboard.name + ' copy');
+        newDoc.canvas = { ...docClipboard.canvas };
+        newDoc.layers = JSON.parse(JSON.stringify(docClipboard.layers));
+        newDoc.activeLayerId = docClipboard.activeLayerId;
+        newDoc.nextLayerId = docClipboard.nextLayerId;
+        project.activeDocId = newDoc.id;
+        restoreDocState();
+        renderTabs();
+        renderLayerList();
+        compositeAndPreview();
+        setStatus('문서 붙여넣기됨');
+    }
+
+    // ── Live state ──
+    // 아래 변수들은 현재 활성 문서의 상태를 가리키는 "라이브" 참조.
+    // 문서 전환(switchDocument) 시 saveCurrentDocState()로 현재 값을 문서에 저장하고,
+    // restoreDocState()로 새 문서의 값을 여기에 복원한다.
+    let layers = [];               // 현재 문서의 레이어 배열 (index 0 = 최하단)
+    let activeLayerId = null;      // 현재 편집 중인(포커스) 레이어 ID
+    let selectedLayerIds = new Set(); // 다중 선택된 레이어 ID (Ctrl/Shift+클릭)
+    let nextLayerId = 0;           // 레이어 ID 자동 증가 카운터
+
+    let dragState = null;          // 레이어 이동/리사이즈 드래그 중 상태
+
+    // ===================== UNDO / REDO =====================
+    //
+    // 스냅샷 기반 undo. 상태 변경 직전에 pushUndo()로 전체 layers 상태를 JSON 직렬화.
+    // undo/redo 시 DOM(레이어 박스)을 전부 제거하고 스냅샷에서 재생성.
+    // 문서 단위 — 문서 전환 시 undo 스택은 유지되지 않음 (세션 내에서만 유효).
+    // skipUndo 파라미터: 병합/붙여넣기처럼 복합 작업에서 내부 호출 시 중복 push 방지.
+
+    const MAX_UNDO = 50;
+    let undoStack = [];
+    let redoStack = [];
+
+    function captureSnapshot() {
+        return JSON.stringify({
+            layers: layers.map(l => ({ ...l })),
+            activeLayerId,
+            selectedLayerIds: [...selectedLayerIds],
+            nextLayerId,
+        });
+    }
+
+    function pushUndo() {
+        undoStack.push(captureSnapshot());
+        if (undoStack.length > MAX_UNDO) undoStack.shift();
+        redoStack = []; // 새 변경이 생기면 redo 스택 초기화
+    }
+
+    function restoreSnapshot(json) {
+        const snap = JSON.parse(json);
+
+        // DOM 초기화 후 스냅샷에서 레이어 재생성
+        safeArea.querySelectorAll('.layer-box').forEach(el => el.remove());
+
+        layers = snap.layers;
+        activeLayerId = snap.activeLayerId;
+        selectedLayerIds = new Set(snap.selectedLayerIds);
+        nextLayerId = snap.nextLayerId;
+
+        layers.forEach(layer => renderLayerOnCanvas(layer));
+        updateActiveVisual();
+        renderLayerList();
+        drawLayerGuides();
+        compositeAndPreview();
+    }
+
+    function undo() {
+        if (undoStack.length === 0) { setStatus('되돌릴 수 없음'); return; }
+        redoStack.push(captureSnapshot());
+        restoreSnapshot(undoStack.pop());
+        setStatus('되돌리기');
+    }
+
+    function redo() {
+        if (redoStack.length === 0) { setStatus('다시 실행할 수 없음'); return; }
+        undoStack.push(captureSnapshot());
+        restoreSnapshot(redoStack.pop());
+        setStatus('다시 실행');
+    }
+
+    // ── 폰트 메트릭 측정용 오프스크린 Canvas ──
+    // DOM과 무관하게 문자 폭을 측정하기 위한 canvas context.
+    // 합성(compositing), 스냅 그리드(SNAP_X), 레이어 최소 크기 계산 등에 사용.
+    // 폰트는 CSS의 --font-aa와 동일한 폴백 체인을 사용해야 정확한 측정이 됨.
+    const measureCtx = document.createElement('canvas').getContext('2d');
+    measureCtx.font = `${FONT_SIZE}px ${CANVAS_FONT}`;
+
+    // ── 도트 문자 (스페이스바 순환 입력) ──
+    // 스페이스바를 누를 때마다 이전 도트를 교체하면서 점점 넓은 공백으로 순환.
+    // 9개 1사이클, 사이클 넘어가면 가장 넓은 도트를 앞에 누적.
+    // AA에서 미세 간격 조정에 필수적인 기능.
+    const DOTS = [
+        '\u200A',           // 1: Hair Space
+        '\u2009',           // 2: Thin Space
+        '\u2006',           // 3: Six-Per-Em Space
+        '\u2005',           // 4: Four-Per-Em Space
+        ' ',                // 5: Space (U+0020)
+        ' \u200A',          // 6: Space + Hair
+        ' \u2009',          // 7: Space + Thin
+        ' \u2006',          // 8: Space + Six-Per-Em
+        ' \u2005',          // 9: Space + Four-Per-Em
+    ];
+
+    // index번째 도트 문자열 생성.
+    // 예: index=0 → Hair, index=9 → Four-Per-Em+Hair (2사이클 시작)
+    function getDotString(index) {
+        const cycleCount = Math.floor(index / DOTS.length);
+        const dotIndex = index % DOTS.length;
+        let result = '';
+        for (let i = 0; i < cycleCount; i++) {
+            result += DOTS[DOTS.length - 1]; // 가장 넓은 도트를 사이클 수만큼 앞에 추가
+        }
+        result += DOTS[dotIndex];
+        return result;
+    }
+
+    // ── 합성용 공백 문자 ──
+    // 레이어 합성 시 문자 사이의 빈 공간(gap)을 채우기 위한 유니코드 스페이스 목록.
+    // initSpaceWidths()에서 실제 폰트 기준 폭을 측정하고 넓은 순으로 정렬.
+    // fillGap()에서 greedy 방식으로 목표 폭에 가장 가까운 조합을 생성.
+    const SPACE_CHARS = [
+        { char: '\u200A', name: 'Hair' },
+        { char: '\u2009', name: 'Thin' },
+        { char: '\u2006', name: '6/em' },
+        { char: '\u2005', name: '4/em' },
+        { char: ' ',      name: 'SP' },
+        { char: '\u2004', name: '3/em' },
+        { char: '\u2002', name: 'En' },
+        { char: '\u2003', name: 'Em' },
+        { char: '\u3000', name: 'Ideo' },
+    ];
+
+    let spaceWidths = [];
+
+    function initSpaceWidths() {
+        // 각 스페이스 문자의 실제 렌더링 폭을 측정하고 넓은 순으로 정렬.
+        // fillGap()에서 greedy fill 시 넓은 것부터 시도하기 위함.
+        spaceWidths = SPACE_CHARS.map(s => ({
+            ...s,
+            width: measureCtx.measureText(s.char).width
+        })).sort((a, b) => b.width - a.width);
+
+        // 반각 스페이스 폭 = X축 스냅 그리드 단위.
+        // 프로포셔널 폰트에서 "칸" 개념의 최소 단위로 사용.
+        SNAP_X = measureCtx.measureText(' ').width;
+    }
+
+    // ===================== SNAP & GRID =====================
+    //
+    // 스냅: 텍스트 레이어의 위치/크기를 그리드에 정렬.
+    //   X축 = SNAP_X (반각 스페이스 폭), Y축 = LINE_HEIGHT (18px)
+    // 이미지 레이어는 스냅 적용 안 함 (자유 배치).
+    // 그리드: safe area 내부에 Canvas로 격자선을 그림.
+    // 문자 그리드: 각 문자에 빨강/파랑 배경을 교차로 표시하여 문자 경계 시각화.
+
+    function snapValue(val, grid) {
+        return Math.round(val / grid) * grid;
+    }
+
+    function snapLayerPosition(rawX, rawY) {
+        if (!snapEnabled) {
+            return {
+                x: Math.max(0, rawX),
+                y: Math.max(0, rawY),
+            };
+        }
+
+        return {
+            x: Math.max(0, snapValue(rawX, SNAP_X)),
+            y: Math.max(0, snapValue(rawY, LINE_HEIGHT)),
+        };
+    }
+
+    // ── 캔버스 구조 ──
+    // canvas (전체) = margin(블리드) + safe area(실제 편집 영역)
+    //   ┌─ canvas ──────────────────┐
+    //   │  margin (눈금자, 크롭 마크) │
+    //   │  ┌─ safe area ──────────┐ │
+    //   │  │  grid (스냅 격자)     │ │
+    //   │  │  layer boxes ...     │ │
+    //   │  └──────────────────────┘ │
+    //   │  layer guides (빔 라인)   │  ← canvas 전체에 걸쳐 그려짐
+    //   └───────────────────────────┘
+    //
+    // 레이어 좌표는 safe area 기준 (0,0 = safe area 좌상단).
+    // 가이드/눈금자는 canvas 전체 좌표 → CANVAS_MARGIN 오프셋 필요.
+    // 모든 Canvas 요소는 devicePixelRatio 보정으로 Retina 선명도 확보.
+    function updateSafeArea() {
+        const cw = canvasEl.offsetWidth;
+        const ch = canvasEl.offsetHeight;
+        const m = CANVAS_MARGIN;
+        const sw = cw - m * 2;
+        const sh = ch - m * 2;
+
+        safeArea.style.left = m + 'px';
+        safeArea.style.top = m + 'px';
+        safeArea.style.width = sw + 'px';
+        safeArea.style.height = sh + 'px';
+
+        drawRulers(cw, ch, m, sw, sh);
+    }
+
+    function drawRulers(cw, ch, m, sw, sh) {
+        const dpr = window.devicePixelRatio || 1;
+
+        // Top ruler
+        const rtop = document.getElementById('rulerTop');
+        rtop.width = cw * dpr;
+        rtop.height = m * dpr;
+        rtop.style.width = cw + 'px';
+        rtop.style.height = m + 'px';
+        const ct = rtop.getContext('2d');
+        ct.scale(dpr, dpr);
+        ct.clearRect(0, 0, cw, m);
+
+        ct.fillStyle = 'rgba(0,0,0,0.25)';
+        ct.font = '7px sans-serif';
+        ct.textAlign = 'center';
+        for (let x = 0; x <= sw; x += 10) {
+            const px = m + x;
+            const isMajor = x % 50 === 0;
+            const tickH = isMajor ? m * 0.45 : m * 0.2;
+            ct.strokeStyle = isMajor ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.12)';
+            ct.lineWidth = 0.5;
+            ct.beginPath();
+            ct.moveTo(px, m);
+            ct.lineTo(px, m - tickH);
+            ct.stroke();
+            if (isMajor && x > 0) {
+                ct.fillText(x, px, m - tickH - 2);
+            }
+        }
+
+        // Left ruler
+        const rleft = document.getElementById('rulerLeft');
+        rleft.width = m * dpr;
+        rleft.height = ch * dpr;
+        rleft.style.width = m + 'px';
+        rleft.style.height = ch + 'px';
+        const cl = rleft.getContext('2d');
+        cl.scale(dpr, dpr);
+        cl.clearRect(0, 0, m, ch);
+
+        cl.fillStyle = 'rgba(0,0,0,0.25)';
+        cl.font = '7px sans-serif';
+        cl.textAlign = 'right';
+        cl.textBaseline = 'middle';
+        for (let y = 0; y <= sh; y += 10) {
+            const py = m + y;
+            const isMajor = y % 50 === 0;
+            const tickW = isMajor ? m * 0.45 : m * 0.2;
+            cl.strokeStyle = isMajor ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.12)';
+            cl.lineWidth = 0.5;
+            cl.beginPath();
+            cl.moveTo(m, py);
+            cl.lineTo(m - tickW, py);
+            cl.stroke();
+            if (isMajor && y > 0) {
+                cl.fillText(y, m - tickW - 2, py);
+            }
+        }
+    }
+
+    // 활성 레이어의 4변에서 캔버스 끝까지 빨간 빔 라인을 그림.
+    // 드래그 중: 불투명 실선 / 평소: 반투명 점선.
+    // 레이어 위치를 시각적으로 확인하기 위한 가이드.
+    // Canvas 전체(margin 포함)에 그리므로 좌표에 CANVAS_MARGIN을 더함.
+    function drawLayerGuides() {
+        const cw = canvasEl.offsetWidth;
+        const ch = canvasEl.offsetHeight;
+        const m = CANVAS_MARGIN;
+        const dpr = window.devicePixelRatio || 1;
+        const guides = document.getElementById('layerGuides');
+        guides.width = cw * dpr;
+        guides.height = ch * dpr;
+        guides.style.width = cw + 'px';
+        guides.style.height = ch + 'px';
+
+        const ctx = guides.getContext('2d');
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, cw, ch);
+
+        if (activeLayerId === null) return;
+        const layer = layers.find(l => l.id === activeLayerId);
+        if (!layer) return;
+
+        const lx = m + layer.x;
+        const ly = m + layer.y;
+        const lw = layer.w;
+        const lh = layer.h;
+
+        if (isDraggingLayer) {
+            ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+            ctx.setLineDash([]);
+        } else {
+            ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+            ctx.setLineDash([2, 4]);
+        }
+        ctx.lineWidth = 1 / dpr;
+
+        [ly, ly + lh].forEach(y => {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(cw, y);
+            ctx.stroke();
+        });
+        [lx, lx + lw].forEach(x => {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, ch);
+            ctx.stroke();
+        });
+
+        ctx.setLineDash([]);
+
+        const crossAlpha = isDraggingLayer ? 0.9 : 0.6;
+        ctx.strokeStyle = `rgba(255, 0, 0, ${crossAlpha})`;
+        ctx.lineWidth = 1 / dpr;
+        const cs = 3;
+        [[lx, ly], [lx + lw, ly], [lx, ly + lh], [lx + lw, ly + lh]].forEach(([cx, cy]) => {
+            ctx.beginPath();
+            ctx.moveTo(cx - cs, cy);
+            ctx.lineTo(cx + cs, cy);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - cs);
+            ctx.lineTo(cx, cy + cs);
+            ctx.stroke();
+        });
+    }
+
+    function drawGrid() {
+        const w = safeArea.offsetWidth;
+        const h = safeArea.offsetHeight;
+        if (w <= 0 || h <= 0 || SNAP_X < 1) return;
+
+        const dpr = window.devicePixelRatio || 1;
+
+        canvasGrid.width = w * dpr;
+        canvasGrid.height = h * dpr;
+        canvasGrid.style.width = w + 'px';
+        canvasGrid.style.height = h + 'px';
+
+        const ctx = canvasGrid.getContext('2d');
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, w, h);
+
+        // Vertical lines (SNAP_X grid)
+        ctx.strokeStyle = 'rgba(0, 120, 255, 0.08)';
+        ctx.lineWidth = 1 / dpr;
+        for (let x = 0; x < w; x += SNAP_X) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, h);
+            ctx.stroke();
+        }
+
+        // Horizontal lines (LINE_HEIGHT grid)
+        ctx.strokeStyle = 'rgba(0, 120, 255, 0.12)';
+        ctx.lineWidth = 1 / dpr;
+        for (let y = 0; y < h; y += LINE_HEIGHT) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(w, y);
+            ctx.stroke();
+        }
+    }
+
+    function toggleSnap() {
+        snapEnabled = !snapEnabled;
+        const btn = document.getElementById('snapBtn');
+        btn.textContent = snapEnabled ? '스냅 ON' : '스냅 OFF';
+        btn.classList.toggle('active', snapEnabled);
+        setStatus(snapEnabled ? 'Snap enabled' : 'Snap disabled');
+    }
+
+    function toggleGrid() {
+        gridVisible = !gridVisible;
+        canvasGrid.classList.toggle('visible', gridVisible);
+        document.getElementById('gridBtn').classList.toggle('active', gridVisible);
+    }
+
+    function toggleCharGrid() {
+        charGridEnabled = !charGridEnabled;
+        document.getElementById('charGridBtn').classList.toggle('active', charGridEnabled);
+        refreshAllLayerDisplays();
+    }
+
+    // ===================== LAYER MANAGEMENT =====================
+    //
+    // createLayer: 새 레이어 생성. opts.type으로 'text'/'image' 구분.
+    //   - 텍스트 레이어: 스냅 적용, overflow 방지, 도트 입력 지원
+    //   - 이미지 레이어: 스냅 미적용, 비율 유지 리사이즈, 합성 결과에서 제외
+    //   - skipUndo: 병합/붙여넣기 등 복합 작업의 내부 호출 시 true
+    //
+    // 레이어 선택 모델:
+    //   - activeLayerId: 단일 포커스 (편집, 가이드 표시 대상)
+    //   - selectedLayerIds: 다중 선택 (복사, 병합, 드래그 이동 대상)
+    //   - 클릭 = 단일 선택, Ctrl+클릭 = 토글, Shift+클릭 = 범위 선택
+    //
+    // 캔버스 위 레이어 DOM:
+    //   - 비활성 레이어: pointer-events:none (관통), 핸들만 auto
+    //   - 활성 레이어: 전체 pointer-events 활성 (텍스트 편집 가능)
+    //   - z-index = layers 배열 인덱스 + 1
+
+    function createLayer(text = '', x = 20, y = 20, w = 250, h = 120, opts = {}, skipUndo = false) {
+        if (!skipUndo) pushUndo();
+        const id = nextLayerId++;
+        const color = LAYER_COLORS[id % LAYER_COLORS.length];
+        const type = opts.type || 'text';
+        const snapped = snapLayerPosition(x, y);
+        const snappedW = (snapEnabled && type === 'text') ? Math.ceil(w / SNAP_X) * SNAP_X : w;
+        const snappedH = (snapEnabled && type === 'text') ? Math.ceil(h / LINE_HEIGHT) * LINE_HEIGHT : h;
+        const layer = {
+            id,
+            type,
+            name: opts.name || (type === 'image' ? `Image ${id}` : `Layer ${id}`),
+            text: type === 'text' ? text : '',
+            x: snapped.x, y: snapped.y, w: snappedW, h: snappedH,
+            visible: true,
+            locked: false,
+            color: type === 'image' ? '#ff9800' : color,
+            // image-only fields
+            textColor: opts.textColor || '#000000',
+            imageSrc: opts.imageSrc || '',
+            opacity: opts.opacity ?? (type === 'image' ? 0.5 : 1),
+        };
+        layers.push(layer);
+        renderLayerOnCanvas(layer);
+        renderLayerList();
+        setActiveLayer(id);
+        return layer;
+    }
+
+    function removeLayer(id, skipUndo = false) {
+        if (!skipUndo) pushUndo();
+        const idx = layers.findIndex(l => l.id === id);
+        if (idx === -1) return;
+
+        const el = document.getElementById(`layer-box-${id}`);
+        if (el) el.remove();
+
+        layers.splice(idx, 1);
+        selectedLayerIds.delete(id);
+        if (activeLayerId === id) {
+            activeLayerId = layers.length > 0 ? layers[layers.length - 1].id : null;
+            selectedLayerIds.clear();
+            if (activeLayerId !== null) selectedLayerIds.add(activeLayerId);
+        }
+        renderLayerList();
+        updateActiveVisual();
+        compositeAndPreview();
+        setStatus('레이어 삭제됨');
+    }
+
+    function removeActiveLayer() {
+        if (activeLayerId !== null) removeLayer(activeLayerId);
+    }
+
+    function setActiveLayer(id, focusTextarea = false, modifier = null) {
+        if (modifier === 'ctrl') {
+            // Ctrl+click: toggle in selection
+            if (selectedLayerIds.has(id)) {
+                selectedLayerIds.delete(id);
+                if (activeLayerId === id) {
+                    activeLayerId = selectedLayerIds.size > 0 ? [...selectedLayerIds][selectedLayerIds.size - 1] : null;
+                }
+            } else {
+                selectedLayerIds.add(id);
+                activeLayerId = id;
+            }
+        } else if (modifier === 'shift' && activeLayerId !== null) {
+            // Shift+click: range select in layer list order
+            const activeIdx = layers.findIndex(l => l.id === activeLayerId);
+            const targetIdx = layers.findIndex(l => l.id === id);
+            if (activeIdx !== -1 && targetIdx !== -1) {
+                const from = Math.min(activeIdx, targetIdx);
+                const to = Math.max(activeIdx, targetIdx);
+                for (let i = from; i <= to; i++) {
+                    selectedLayerIds.add(layers[i].id);
+                }
+            }
+            activeLayerId = id;
+        } else {
+            // Normal click: single select
+            selectedLayerIds.clear();
+            selectedLayerIds.add(id);
+            activeLayerId = id;
+        }
+
+        renderLayerList();
+        updateActiveVisual();
+        drawLayerGuides();
+
+        const layer = layers.find(l => l.id === id);
+        if (layer) {
+            if (focusTextarea) {
+                const textarea = document.querySelector(`#layer-box-${id} .layer-textarea`);
+                if (textarea) textarea.focus();
+            }
+            document.getElementById('activeLayerInfo').textContent = `Active: ${layer.name} (${layer.x}, ${layer.y}) [${selectedLayerIds.size} selected]`;
+        }
+    }
+
+    function updateActiveVisual() {
+        document.querySelectorAll('.layer-box').forEach(el => {
+            el.classList.remove('active', 'selected');
+        });
+        selectedLayerIds.forEach(id => {
+            const el = document.getElementById(`layer-box-${id}`);
+            if (el) el.classList.add('selected');
+        });
+        if (activeLayerId !== null) {
+            const el = document.getElementById(`layer-box-${activeLayerId}`);
+            if (el) el.classList.add('active');
+        }
+    }
+
+    function moveLayerOrder(id, dir) {
+        const idx = layers.findIndex(l => l.id === id);
+        const newIdx = idx + dir;
+        if (newIdx < 0 || newIdx >= layers.length) return;
+        pushUndo();
+        [layers[idx], layers[newIdx]] = [layers[newIdx], layers[idx]];
+
+        // Update z-index on canvas
+        layers.forEach((l, i) => {
+            const el = document.getElementById(`layer-box-${l.id}`);
+            if (el) el.style.zIndex = i + 1;
+        });
+
+        renderLayerList();
+        compositeAndPreview();
+    }
+
+    function toggleLayerVisibility(id) {
+        const layer = layers.find(l => l.id === id);
+        if (!layer) return;
+        pushUndo();
+        layer.visible = !layer.visible;
+        const el = document.getElementById(`layer-box-${layer.id}`);
+        if (el) el.style.display = layer.visible ? '' : 'none';
+        renderLayerList();
+        compositeAndPreview();
+    }
+
+    function copyLayer() {
+        if (selectedLayerIds.size === 0) return;
+        layerClipboard = layers
+            .filter(l => selectedLayerIds.has(l.id))
+            .map(l => ({
+                name: l.name, type: l.type, text: l.text,
+                w: l.w, h: l.h, x: l.x, y: l.y,
+                textColor: l.textColor, opacity: l.opacity,
+                imageSrc: l.imageSrc,
+            }));
+        setStatus(`${layerClipboard.length}개 레이어 복사됨`);
+    }
+
+    function pasteLayer() {
+        if (!layerClipboard || layerClipboard.length === 0) return;
+        pushUndo();
+        const offset = LINE_HEIGHT;
+        selectedLayerIds.clear();
+        layerClipboard.forEach(lc => {
+            const newLayer = createLayer(
+                lc.text,
+                lc.x + offset,
+                lc.y + offset,
+                lc.w,
+                lc.h,
+                { type: lc.type, imageSrc: lc.imageSrc, opacity: lc.opacity, textColor: lc.textColor },
+                true
+            );
+            newLayer.name = lc.name + ' copy';
+            selectedLayerIds.add(newLayer.id);
+        });
+        renderLayerList();
+        updateActiveVisual();
+        compositeAndPreview();
+        setStatus(`${layerClipboard.length}개 레이어 붙여넣기됨`);
+    }
+
+    function mergeSelectedLayers() {
+        const selected = layers.filter(l => selectedLayerIds.has(l.id) && l.type === 'text');
+        if (selected.length < 2) {
+            setStatus('병합할 텍스트 레이어를 2개 이상 선택하세요');
+            return;
+        }
+
+        pushUndo();
+
+        // Find bounding box origin
+        let minX = Infinity, minY = Infinity;
+        selected.forEach(l => {
+            minX = Math.min(minX, l.x);
+            minY = Math.min(minY, l.y);
+        });
+
+        // Composite with origin offset
+        const mergedLines = compositeLayersSubset(selected, minX, minY);
+        const mergedText = mergedLines.join('\n');
+
+        // Remove old layers
+        selected.forEach(l => {
+            const el = document.getElementById(`layer-box-${l.id}`);
+            if (el) el.remove();
+            const idx = layers.findIndex(ll => ll.id === l.id);
+            if (idx !== -1) layers.splice(idx, 1);
+        });
+
+        // Create merged layer
+        selectedLayerIds.clear();
+        const newLayer = createLayer(mergedText, minX, minY, 300, 200, {}, true);
+        newLayer.name = 'Merged';
+        // Auto-fit size
+        const textLines = mergedText.split('\n');
+        let maxW = 0;
+        textLines.forEach(line => { maxW = Math.max(maxW, measureCtx.measureText(line).width); });
+        newLayer.w = Math.ceil(maxW + LAYER_PADDING * 2);
+        newLayer.h = textLines.length * LINE_HEIGHT + LAYER_PADDING * 2;
+        if (snapEnabled) {
+            newLayer.w = Math.ceil(newLayer.w / SNAP_X) * SNAP_X;
+            newLayer.h = Math.ceil(newLayer.h / LINE_HEIGHT) * LINE_HEIGHT;
+        }
+        const box = document.getElementById(`layer-box-${newLayer.id}`);
+        if (box) {
+            box.style.width = newLayer.w + 'px';
+            box.style.height = newLayer.h + 'px';
+        }
+
+        renderLayerList();
+        updateActiveVisual();
+        drawLayerGuides();
+        compositeAndPreview();
+        setStatus(`${selected.length}개 레이어 병합됨`);
+    }
+
+    // Composite a subset of layers (for merge)
+    function compositeLayersSubset(subset, originX = 0, originY = 0) {
+        let maxPixelLine = 0;
+        subset.forEach(layer => {
+            const lineCount = layer.text.split('\n').length;
+            const bottomPx = (layer.y - originY) + LAYER_PADDING + lineCount * LINE_HEIGHT;
+            maxPixelLine = Math.max(maxPixelLine, bottomPx);
+        });
+
+        const totalLines = Math.ceil(maxPixelLine / LINE_HEIGHT);
+        const resultLines = [];
+
+        for (let lineIdx = 0; lineIdx < totalLines; lineIdx++) {
+            const lineTopPx = lineIdx * LINE_HEIGHT;
+            let placements = [];
+
+            subset.forEach((layer, layerIdx) => {
+                const layerLines = layer.text.split('\n');
+                const relY = layer.y - originY;
+                const layerLineIdx = Math.round((lineTopPx - relY - LAYER_PADDING) / LINE_HEIGHT);
+                if (layerLineIdx < 0 || layerLineIdx >= layerLines.length) return;
+
+                const expectedPx = relY + LAYER_PADDING + layerLineIdx * LINE_HEIGHT;
+                if (Math.abs(expectedPx - lineTopPx) > LINE_HEIGHT / 2) return;
+
+                const lineText = layerLines[layerLineIdx];
+                const measured = measureString(lineText);
+                const layerXOffset = (layer.x - originX) + LAYER_PADDING;
+
+                measured.forEach(m => {
+                    if (!isTransparent(m.char)) {
+                        placements.push({ char: m.char, x: m.x + layerXOffset, width: m.width, layerIndex: layerIdx });
+                    }
+                });
+            });
+
+            if (placements.length === 0) { resultLines.push(''); continue; }
+            placements.sort((a, b) => a.x - b.x || a.layerIndex - b.layerIndex);
+
+            const resolved = [];
+            for (const p of placements) {
+                let dominated = false;
+                for (let i = resolved.length - 1; i >= 0; i--) {
+                    const r = resolved[i];
+                    if (p.x < r.x + r.width && p.x + p.width > r.x) {
+                        if (p.layerIndex > r.layerIndex) { resolved.splice(i, 1); } else { dominated = true; break; }
+                    }
+                }
+                if (!dominated) resolved.push(p);
+            }
+            resolved.sort((a, b) => a.x - b.x);
+
+            let output = '';
+            let currentX = 0;
+            for (const p of resolved) {
+                const gap = p.x - currentX;
+                if (gap > 0.5) output += fillGap(gap).str;
+                output += p.char;
+                currentX = p.x + p.width;
+            }
+            resultLines.push(output);
+        }
+
+        while (resultLines.length > 0 && resultLines[resultLines.length - 1].trim() === '') resultLines.pop();
+        return resultLines;
+    }
+
+    function toggleLayerLock(id) {
+        const layer = layers.find(l => l.id === id);
+        if (!layer) return;
+        pushUndo();
+        layer.locked = !layer.locked;
+        const el = document.getElementById(`layer-box-${layer.id}`);
+        if (el) el.classList.toggle('locked', layer.locked);
+        renderLayerList();
+    }
+
+    // ===================== RENDER LAYER ON CANVAS =====================
+
+    // 레이어를 캔버스(safe area)에 DOM으로 렌더링.
+    //
+    // 텍스트 레이어 구조:
+    //   layer-box (position: absolute, safe area 기준)
+    //   ├── layer-box-move (우상단 삼각형, 드래그=이동)
+    //   ├── layer-box-resize (우하단 삼각형, 드래그=크기조절)
+    //   └── layer-edit-area
+    //       ├── layer-display (보이는 텍스트, pointer-events:none)
+    //       └── layer-textarea (투명, 실제 입력 받음, caret만 보임)
+    //
+    // 이미지 레이어: edit-area 대신 <img> 태그.
+    //
+    // 비활성 레이어: pointer-events:none → 아래 레이어에 접근 가능.
+    //   핸들(move/resize)만 pointer-events:auto.
+    //
+    // textarea의 스페이스바: 도트 순환 입력 (resetDot/getDotString).
+    // textarea의 overflow 감지: scrollHeight > clientHeight 시 입력 롤백.
+    function renderLayerOnCanvas(layer) {
+        const box = document.createElement('div');
+        box.className = 'layer-box' + (layer.type === 'image' ? ' image-layer' : '');
+        box.id = `layer-box-${layer.id}`;
+        box.style.left = layer.x + 'px';
+        box.style.top = layer.y + 'px';
+        box.style.width = layer.w + 'px';
+        box.style.height = layer.h + 'px';
+        box.style.zIndex = layers.indexOf(layer) + 1;
+        box.style.opacity = layer.opacity;
+
+        // Move handle (top-right)
+        const moveHandle = document.createElement('div');
+        moveHandle.className = 'layer-box-handle layer-box-move';
+        moveHandle.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+            startDrag(e, layer.id, 'move');
+        });
+        box.appendChild(moveHandle);
+
+        // Resize handle (bottom-right)
+        const resizeHandle = document.createElement('div');
+        resizeHandle.className = 'layer-box-handle layer-box-resize';
+        resizeHandle.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+            startDrag(e, layer.id, 'resize');
+        });
+        box.appendChild(resizeHandle);
+
+        if (layer.type === 'image') {
+            // Image layer
+            const img = document.createElement('img');
+            img.className = 'layer-image';
+            img.src = layer.imageSrc;
+            box.appendChild(img);
+        } else {
+            // Text layer
+            const editArea = document.createElement('div');
+            editArea.className = 'layer-edit-area';
+
+            const display = document.createElement('div');
+            display.className = 'layer-display';
+            display.style.color = layer.textColor;
+            editArea.appendChild(display);
+
+            const textarea = document.createElement('textarea');
+            textarea.className = 'layer-textarea';
+            textarea.value = layer.text;
+            textarea.spellcheck = false;
+            textarea.style.caretColor = layer.textColor;
+
+            // Spacebar dot cycling state
+            let dotIndex = 0;
+            let dotStartPos = -1;
+            let dotCurrentLen = 0;
+
+            function resetDot() { dotIndex = 0; dotStartPos = -1; dotCurrentLen = 0; }
+
+            textarea.addEventListener('keydown', (e) => {
+                if (e.key === ' ') {
+                    e.preventDefault();
+                    const curPos = textarea.selectionStart;
+
+                    if (dotStartPos === -1) {
+                        dotStartPos = curPos;
+                    } else if (curPos !== dotStartPos + dotCurrentLen) {
+                        resetDot();
+                        dotStartPos = curPos;
+                    }
+
+                    const before = textarea.value.substring(0, dotStartPos);
+                    const after = textarea.value.substring(dotStartPos + dotCurrentLen);
+                    const newDot = getDotString(dotIndex);
+                    dotCurrentLen = newDot.length;
+
+                    textarea.value = before + newDot + after;
+                    textarea.selectionStart = textarea.selectionEnd = dotStartPos + dotCurrentLen;
+                    dotIndex++;
+
+                    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    setStatus(`Dot ${((dotIndex - 1) % DOTS.length) + 1} (cycle ${Math.floor((dotIndex - 1) / DOTS.length) + 1})`);
+                } else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+                    resetDot();
+                }
+            });
+
+            let lastValidText = layer.text;
+            textarea.addEventListener('input', () => {
+                const prev = lastValidText;
+                layer.text = textarea.value;
+                updateLayerDisplay(layer);
+
+                if (textarea.scrollHeight > textarea.clientHeight || textarea.scrollWidth > textarea.clientWidth) {
+                    layer.text = prev;
+                    textarea.value = prev;
+                    updateLayerDisplay(layer);
+                    return;
+                }
+
+                lastValidText = textarea.value;
+                compositeAndPreview();
+            });
+
+            textarea.addEventListener('focus', () => {
+                pushUndo();
+                setActiveLayer(layer.id, true);
+            });
+
+            textarea.addEventListener('keyup', updateCursorInfo);
+            textarea.addEventListener('click', updateCursorInfo);
+
+            editArea.appendChild(textarea);
+            box.appendChild(editArea);
+        }
+
+        // Click to activate
+        box.addEventListener('mousedown', (e) => {
+            setActiveLayer(layer.id);
+        });
+
+        safeArea.appendChild(box);
+        if (layer.type === 'text') updateLayerDisplay(layer);
+    }
+
+    let charGridEnabled = false;
+
+    function updateLayerDisplay(layer) {
+        const box = document.getElementById(`layer-box-${layer.id}`);
+        if (!box) return;
+        const display = box.querySelector('.layer-display');
+        if (charGridEnabled) {
+            // Render per-character spans with alternating colors
+            let html = '';
+            let idx = 0;
+            const lines = layer.text.split('\n');
+            lines.forEach((line, li) => {
+                const chars = [...line];
+                chars.forEach(ch => {
+                    const bg = idx % 2 === 0 ? 'rgba(255,0,0,0.2)' : 'rgba(0,100,255,0.2)';
+                    html += `<span style="background:${bg}">${ch.replace(/</g, '&lt;')}</span>`;
+                    idx++;
+                });
+                if (li < lines.length - 1) html += '\n';
+            });
+            display.innerHTML = html;
+        } else {
+            display.textContent = layer.text;
+        }
+    }
+
+    function refreshAllLayerDisplays() {
+        layers.forEach(l => { if (l.type === 'text') updateLayerDisplay(l); });
+    }
+
+    // ===================== DRAG =====================
+
+    function startDrag(e, layerId, type) {
+        const layer = layers.find(l => l.id === layerId);
+        if (!layer || layer.locked) return;
+        pushUndo();
+
+        setActiveLayer(layerId);
+        isDraggingLayer = type === 'move';
+
+        dragState = {
+            type,
+            layerId,
+            startX: e.clientX,
+            startY: e.clientY,
+            origX: layer.x,
+            origY: layer.y,
+            origW: layer.w,
+            origH: layer.h,
+        };
+
+        drawLayerGuides();
+        e.preventDefault();
+    }
+
+    document.addEventListener('mousemove', (e) => {
+        if (!dragState || canvasResizeDrag) return;
+
+        const dx = e.clientX - dragState.startX;
+        const dy = e.clientY - dragState.startY;
+        const layer = layers.find(l => l.id === dragState.layerId);
+        if (!layer) return;
+
+        const box = document.getElementById(`layer-box-${layer.id}`);
+        if (!box) return;
+
+        if (dragState.type === 'move') {
+            const rawX = dragState.origX + dx;
+            const rawY = dragState.origY + dy;
+            const snapped = layer.type === 'image'
+                ? { x: Math.max(0, rawX), y: Math.max(0, rawY) }
+                : snapLayerPosition(rawX, rawY);
+            layer.x = snapped.x;
+            layer.y = snapped.y;
+            box.style.left = layer.x + 'px';
+            box.style.top = layer.y + 'px';
+            const gridCol = Math.round((layer.x + LAYER_PADDING) / SNAP_X);
+            const gridRow = Math.round((layer.y + LAYER_PADDING) / LINE_HEIGHT);
+            document.getElementById('activeLayerInfo').textContent = `Active: ${layer.name} (${layer.x.toFixed(1)}, ${layer.y}) [col ${gridCol}, row ${gridRow}]`;
+            drawLayerGuides();
+        } else if (dragState.type === 'resize') {
+            if (layer.type === 'image') {
+                // Aspect-ratio locked resize
+                const aspect = dragState.origW / dragState.origH;
+                // Use whichever axis moved more
+                const absDx = Math.abs(dx);
+                const absDy = Math.abs(dy);
+                let rawW, rawH;
+                if (absDx > absDy) {
+                    rawW = Math.max(30, dragState.origW + dx);
+                    rawH = rawW / aspect;
+                } else {
+                    rawH = Math.max(30, dragState.origH + dy);
+                    rawW = rawH * aspect;
+                }
+                layer.w = Math.max(30, rawW);
+                layer.h = Math.max(30, rawH);
+            } else {
+                let rawW = dragState.origW + dx;
+                let rawH = dragState.origH + dy;
+
+                // Measure content minimum size
+                const lines = layer.text.split('\n');
+                let maxLineW = 0;
+                for (const line of lines) {
+                    maxLineW = Math.max(maxLineW, measureCtx.measureText(line).width);
+                }
+                const minW = Math.max(60, maxLineW + LAYER_PADDING * 2);
+                const minH = Math.max(30, lines.length * LINE_HEIGHT + LAYER_PADDING * 2);
+                rawW = Math.max(minW, rawW);
+                rawH = Math.max(minH, rawH);
+
+                if (snapEnabled) {
+                    rawW = Math.ceil(rawW / SNAP_X) * SNAP_X;
+                    rawH = Math.ceil(rawH / LINE_HEIGHT) * LINE_HEIGHT;
+                }
+
+                layer.w = rawW;
+                layer.h = rawH;
+            }
+            box.style.width = layer.w + 'px';
+            box.style.height = layer.h + 'px';
+            drawLayerGuides();
+        }
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (dragState) {
+            if (dragState.type === 'move') {
+                compositeAndPreview();
+            }
+            isDraggingLayer = false;
+            dragState = null;
+            drawLayerGuides();
+        }
+    });
+
+    // ===================== LAYER LIST =====================
+
+    function renderLayerList() {
+        layerListEl.innerHTML = '';
+
+        // Render in reverse order (top layer first in list)
+        for (let i = layers.length - 1; i >= 0; i--) {
+            const layer = layers[i];
+            const item = document.createElement('div');
+            item.className = 'layer-item'
+                + (layer.id === activeLayerId ? ' active' : '')
+                + (selectedLayerIds.has(layer.id) && layer.id !== activeLayerId ? ' selected' : '');
+            item.dataset.layerId = layer.id;
+            item.innerHTML = `
+                <div class="drag-handle" title="드래그로 순서 변경">⠿</div>
+                <div class="layer-color" style="background:${layer.textColor};"><input type="color" value="${layer.textColor}"></div>
+                <span class="layer-name">${layer.name}</span>
+                <div class="layer-btn ${layer.locked ? 'locked' : ''}" data-action="lock" title="잠금 토글">
+                    ${layer.locked ? '🔒' : '🔓'}
+                </div>
+                <div class="layer-btn ${layer.visible ? '' : 'off'}" data-action="vis" title="가시성 토글">
+                    ${layer.visible ? '👁' : '—'}
+                </div>
+                <div class="layer-btn" data-action="delete" title="삭제" style="color:#888;">🗑</div>
+            `;
+
+            // Settings popup (all layer types)
+            {
+                const popup = document.createElement('div');
+                popup.className = 'layer-props-popup';
+
+                const opacityLabel = document.createElement('label');
+                opacityLabel.innerHTML = '<span>투명도</span>';
+                const slider = document.createElement('input');
+                slider.type = 'range';
+                slider.min = '0';
+                slider.max = '100';
+                slider.value = Math.round(layer.opacity * 100);
+                slider.addEventListener('input', () => {
+                    layer.opacity = parseInt(slider.value) / 100;
+                    const box = document.getElementById(`layer-box-${layer.id}`);
+                    if (box) box.style.opacity = layer.opacity;
+                });
+                slider.addEventListener('mousedown', (ev) => ev.stopPropagation());
+                opacityLabel.appendChild(slider);
+                popup.appendChild(opacityLabel);
+                document.body.appendChild(popup);
+
+                const settingsBtn = document.createElement('div');
+                settingsBtn.className = 'layer-btn';
+                settingsBtn.title = '속성';
+                settingsBtn.textContent = '⚙';
+                settingsBtn.addEventListener('mousedown', (ev) => {
+                    ev.stopPropagation();
+                    document.querySelectorAll('.layer-props-popup.visible').forEach(p => p.classList.remove('visible'));
+                    const rect = settingsBtn.getBoundingClientRect();
+                    popup.style.left = (rect.right + 6) + 'px';
+                    popup.style.top = rect.top + 'px';
+                    popup.classList.toggle('visible');
+                });
+
+                const lockBtn = item.querySelector('[data-action="lock"]');
+                lockBtn.parentElement.insertBefore(settingsBtn, lockBtn);
+
+                document.addEventListener('mousedown', (ev) => {
+                    if (!popup.contains(ev.target) && ev.target !== settingsBtn) {
+                        popup.classList.remove('visible');
+                    }
+                });
+            }
+
+            // Color picker
+            const colorInput = item.querySelector('input[type="color"]');
+            colorInput.addEventListener('input', (ev) => {
+                layer.textColor = ev.target.value;
+                ev.target.parentElement.style.background = ev.target.value;
+                const box = document.getElementById(`layer-box-${layer.id}`);
+                if (box) {
+                    const display = box.querySelector('.layer-display');
+                    const textarea = box.querySelector('.layer-textarea');
+                    if (display) display.style.color = layer.textColor;
+                    if (textarea) textarea.style.caretColor = layer.textColor;
+                }
+            });
+            colorInput.addEventListener('mousedown', (ev) => ev.stopPropagation());
+
+            // Hover highlight on canvas
+            item.addEventListener('mouseenter', () => {
+                const box = document.getElementById(`layer-box-${layer.id}`);
+                if (box) box.classList.add('hovered');
+            });
+            item.addEventListener('mouseleave', () => {
+                const box = document.getElementById(`layer-box-${layer.id}`);
+                if (box) box.classList.remove('hovered');
+            });
+
+            // Click to select — Ctrl+click for multi-select
+            item.addEventListener('mousedown', (e) => {
+                if (e.target.closest('[data-action]') || e.target.closest('.drag-handle') || e.target.closest('.layer-name-input')) return;
+                const modifier = (e.ctrlKey || e.metaKey) ? 'ctrl' : e.shiftKey ? 'shift' : null;
+                if (modifier || layer.id !== activeLayerId) {
+                    setActiveLayer(layer.id, false, modifier);
+                }
+            });
+
+            // Double-click name to rename
+            item.querySelector('.layer-name').addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                const nameEl = e.target.closest('.layer-name');
+                if (!nameEl) return;
+                const input = document.createElement('input');
+                input.className = 'layer-name-input';
+                input.value = layer.name;
+                input.style.cssText = 'width:100%;background:#333;color:#e0e0e0;border:1px solid #2196f3;border-radius:2px;padding:0 4px;font-size:0.8rem;outline:none;';
+                nameEl.replaceWith(input);
+                input.focus();
+                input.select();
+
+                const commit = () => {
+                    const val = input.value.trim();
+                    if (val) layer.name = val;
+                    renderLayerList();
+                };
+                input.addEventListener('blur', commit);
+                input.addEventListener('keydown', (ev) => {
+                    if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
+                    if (ev.key === 'Escape') { input.value = layer.name; input.blur(); }
+                });
+            });
+            item.querySelector('[data-action="vis"]').addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                toggleLayerVisibility(layer.id);
+            });
+            item.querySelector('[data-action="lock"]').addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                toggleLayerLock(layer.id);
+            });
+            item.querySelector('[data-action="delete"]').addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                removeLayer(layer.id);
+            });
+
+            layerListEl.appendChild(item);
+        }
+    }
+
+    // ===================== INPUT MODAL =====================
+
+    function showInputModal(title, defaultValue = '') {
+        return new Promise((resolve) => {
+            const overlay = document.getElementById('inputModalOverlay');
+            const titleEl = document.getElementById('inputModalTitle');
+            const input = document.getElementById('inputModalInput');
+            const btns = document.getElementById('inputModalBtns');
+
+            titleEl.textContent = title;
+            input.style.display = '';
+            input.value = defaultValue;
+            btns.innerHTML = '';
+
+            const cancel = document.createElement('button');
+            cancel.className = 'btn-cancel';
+            cancel.textContent = '취소';
+            const ok = document.createElement('button');
+            ok.className = 'btn-ok';
+            ok.textContent = '확인';
+
+            btns.appendChild(cancel);
+            btns.appendChild(ok);
+            overlay.classList.add('visible');
+            input.focus();
+            input.select();
+
+            function close(val) {
+                overlay.classList.remove('visible');
+                resolve(val);
+            }
+            cancel.addEventListener('click', () => close(null));
+            ok.addEventListener('click', () => close(input.value));
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') close(input.value);
+                if (e.key === 'Escape') close(null);
+            });
+        });
+    }
+
+    function showConfirmModal(title, okLabel = '확인', okClass = 'btn-ok') {
+        return new Promise((resolve) => {
+            const overlay = document.getElementById('inputModalOverlay');
+            const titleEl = document.getElementById('inputModalTitle');
+            const input = document.getElementById('inputModalInput');
+            const btns = document.getElementById('inputModalBtns');
+
+            titleEl.textContent = title;
+            input.style.display = 'none';
+            btns.innerHTML = '';
+
+            const cancel = document.createElement('button');
+            cancel.className = 'btn-cancel';
+            cancel.textContent = '취소';
+            const ok = document.createElement('button');
+            ok.className = okClass;
+            ok.textContent = okLabel;
+
+            btns.appendChild(cancel);
+            btns.appendChild(ok);
+            overlay.classList.add('visible');
+            ok.focus();
+
+            function close(val) {
+                overlay.classList.remove('visible');
+                resolve(val);
+            }
+            cancel.addEventListener('click', () => close(false));
+            ok.addEventListener('click', () => close(true));
+            overlay.addEventListener('keydown', function handler(e) {
+                if (e.key === 'Enter') { close(true); overlay.removeEventListener('keydown', handler); }
+                if (e.key === 'Escape') { close(false); overlay.removeEventListener('keydown', handler); }
+            });
+        });
+    }
+
+    // ===================== PANEL SECTIONS =====================
+
+    function toggleSection(id) {
+        const section = document.getElementById(id);
+        if (!section) return;
+        section.classList.toggle('collapsed');
+    }
+
+    // ===================== LIBRARY (MLT) =====================
+
+    // MLT — 상단 주석 참조
+    // 읽기 전용, 앱이 관리하지 않음, 디렉토리 경로만 설정에 기억
+    // [SPLIT] 구분, [AA] 태그 이후가 본문
+
+    let mltFiles = [];          // { name: string, handle: FileSystemFileHandle }[]
+    let mltParsedEntries = [];  // { name: string, text: string }[]
+    let mltSections = [];       // { name: string, startIdx: number, endIdx: number }[]
+    let mltCurrentFileIdx = -1;
+
+    function parseMLT(content) {
+        const entries = [];
+        const blocks = content.split('[SPLIT]');
+        for (const block of blocks) {
+            const trimmed = block.trim();
+            if (!trimmed) continue;
+
+            const aaIdx = trimmed.indexOf('[AA]');
+            if (aaIdx === -1) {
+                if (trimmed.length > 0) {
+                    entries.push({ name: '', text: trimmed });
+                }
+                continue;
+            }
+
+            const name = trimmed.substring(0, aaIdx).trim();
+            const text = trimmed.substring(aaIdx + 4).replace(/^\n/, '');
+            if (text.trim().length > 0) {
+                entries.push({ name, text });
+            }
+        }
+        return entries;
+    }
+
+    // Group entries into sections by common name prefix or numbered groups
+    function buildSections(entries) {
+        if (entries.length <= 20) {
+            return [{ name: '전체', startIdx: 0, endIdx: entries.length }];
+        }
+        // Group every 50 entries
+        const sections = [];
+        const chunkSize = 50;
+        for (let i = 0; i < entries.length; i += chunkSize) {
+            const end = Math.min(i + chunkSize, entries.length);
+            const firstName = entries[i].name || `#${i + 1}`;
+            sections.push({ name: `${i + 1}–${end} (${firstName})`, startIdx: i, endIdx: end });
+        }
+        return sections;
+    }
+
+    async function loadMLTDir() {
+        if (!('showDirectoryPicker' in window)) {
+            setStatus('이 브라우저에서는 디렉토리 선택을 지원하지 않습니다');
+            return;
+        }
+
+        try {
+            const dirHandle = await window.showDirectoryPicker();
+            mltFiles = [];
+
+            for await (const [name, handle] of dirHandle.entries()) {
+                if (handle.kind === 'file' && (name.endsWith('.mlt') || name.endsWith('.MLT'))) {
+                    mltFiles.push({ name, handle });
+                }
+            }
+
+            mltFiles.sort((a, b) => a.name.localeCompare(b.name));
+
+            if (mltFiles.length === 0) {
+                setStatus('MLT 파일이 없는 디렉토리입니다');
+                return;
+            }
+
+            // Populate file select
+            const fileSel = document.getElementById('mltFileSelect');
+            fileSel.innerHTML = '';
+            fileSel.disabled = false;
+            mltFiles.forEach((f, i) => {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = f.name;
+                fileSel.appendChild(opt);
+            });
+
+            // Auto-expand
+            const section = document.getElementById('sectionLibrary');
+            if (section.classList.contains('collapsed')) section.classList.remove('collapsed');
+
+            // Load first file
+            await loadMLTFile(0);
+            setStatus(`MLT 디렉토리: ${mltFiles.length}개 파일`);
+
+        } catch (err) {
+            if (err.name !== 'AbortError') {
+                console.error(err);
+                setStatus('디렉토리 로드 실패');
+            }
+        }
+    }
+
+    async function loadMLTFile(idx) {
+        mltCurrentFileIdx = idx;
+        const fileData = mltFiles[idx];
+        const file = await fileData.handle.getFile();
+        const content = await file.text();
+
+        mltParsedEntries = parseMLT(content);
+        mltSections = buildSections(mltParsedEntries);
+
+        // Populate section select
+        const secSel = document.getElementById('mltSectionSelect');
+        secSel.innerHTML = '';
+        secSel.disabled = false;
+        mltSections.forEach((s, i) => {
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.textContent = s.name;
+            secSel.appendChild(opt);
+        });
+
+        renderMLTList(0);
+    }
+
+    function onMLTFileSelect() {
+        const idx = parseInt(document.getElementById('mltFileSelect').value);
+        loadMLTFile(idx);
+    }
+
+    function onMLTSectionSelect() {
+        const idx = parseInt(document.getElementById('mltSectionSelect').value);
+        renderMLTList(idx);
+    }
+
+    function renderMLTList(sectionIdx = 0) {
+        const list = document.getElementById('libraryList');
+
+        if (mltParsedEntries.length === 0) {
+            list.innerHTML = '<div class="empty-hint">항목이 없습니다</div>';
+            return;
+        }
+
+        const sec = mltSections[sectionIdx] || mltSections[0];
+        list.innerHTML = '';
+
+        for (let i = sec.startIdx; i < sec.endIdx; i++) {
+            const entry = mltParsedEntries[i];
+            const item = document.createElement('div');
+            item.className = 'library-item';
+
+            const preview = document.createElement('div');
+            preview.className = 'lib-preview';
+            preview.textContent = entry.text.split('\n').slice(0, 3).join('\n');
+            item.appendChild(preview);
+
+            const name = document.createElement('div');
+            name.className = 'lib-name';
+            name.textContent = entry.name || `#${i + 1}`;
+            item.appendChild(name);
+
+            item.addEventListener('click', () => insertMLTEntry(entry));
+            list.appendChild(item);
+        }
+    }
+
+    function insertMLTEntry(entry) {
+        const lines = entry.text.split('\n');
+        let maxW = 0;
+        lines.forEach(l => { maxW = Math.max(maxW, measureCtx.measureText(l).width); });
+        const w = maxW + LAYER_PADDING * 2;
+        const h = lines.length * LINE_HEIGHT + LAYER_PADDING * 2;
+        const offsetBase = layers.length * 20;
+
+        const layer = createLayer(entry.text, 20 + offsetBase, 20 + offsetBase, w, h);
+        layer.name = entry.name || 'MLT';
+        const box = document.getElementById(`layer-box-${layer.id}`);
+        if (box) {
+            box.style.width = layer.w + 'px';
+            box.style.height = layer.h + 'px';
+        }
+        renderLayerList();
+        compositeAndPreview();
+        setStatus(`"${layer.name}" 레이어로 삽입됨`);
+    }
+
+    // ===================== PALETTE =====================
+
+    // Palette data structures — 상단 주석 참조
+    // .aapals (팔레트세트), .aapal (단일 팔레트)
+    // 앱 설정 영역에 .aapals 파일로 즉시 저장, 파일 기반
+
+    // In-memory palette data (POC: no persistence)
+    let paletteData = {
+        sets: [
+            {
+                name: '기본 세트',
+                palettes: [
+                    {
+                        name: '얼굴',
+                        chars: ['∀', '´', '｀', 'ω', 'Д', 'ﾟ', 'д', '∇', '皿', 'ー']
+                    },
+                    {
+                        name: '괄호',
+                        chars: ['（', '）', '「', '」', '『', '』', '【', '】', '＜', '＞']
+                    },
+                    {
+                        name: '선/장식',
+                        chars: ['━', '─', '│', '┃', '￣', '＿', '／', '＼', '∧', '∨']
+                    },
+                    {
+                        name: '기호',
+                        chars: ['☆', '★', '○', '●', '◎', '◇', '◆', '□', '■', '△']
+                    },
+                ]
+            }
+        ],
+        activeSetIndex: 0,
+        activePaletteIndex: 0,
+    };
+
+    function renderPaletteSetSelect() {
+        const sel = document.getElementById('paletteSetSelect');
+        const set = paletteData.sets[paletteData.activeSetIndex];
+        sel.innerHTML = '';
+        set.palettes.forEach((p, i) => {
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.textContent = p.name;
+            if (i === paletteData.activePaletteIndex) opt.selected = true;
+            sel.appendChild(opt);
+        });
+    }
+
+    function renderPaletteGrid() {
+        const grid = document.getElementById('paletteGrid');
+        const set = paletteData.sets[paletteData.activeSetIndex];
+        const palette = set?.palettes[paletteData.activePaletteIndex];
+        grid.innerHTML = '';
+
+        if (!palette || palette.chars.length === 0) {
+            grid.innerHTML = '<div class="empty-hint">캐릭터가 없습니다</div>';
+            return;
+        }
+
+        palette.chars.forEach((ch, i) => {
+            const el = document.createElement('div');
+            el.className = 'palette-char';
+            el.textContent = ch;
+            el.title = `U+${ch.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}`;
+            el.addEventListener('click', () => insertPaletteChar(ch));
+            el.addEventListener('contextmenu', async (e) => {
+                e.preventDefault();
+                const ok = await showConfirmModal(`"${ch}" 삭제?`, '삭제', 'btn-danger');
+                if (ok) {
+                    palette.chars.splice(i, 1);
+                    renderPaletteGrid();
+                }
+            });
+            grid.appendChild(el);
+        });
+    }
+
+    function switchPaletteSet() {
+        paletteData.activePaletteIndex = parseInt(document.getElementById('paletteSetSelect').value);
+        renderPaletteGrid();
+    }
+
+    function insertPaletteChar(ch) {
+        // Insert into active layer's textarea at cursor
+        if (activeLayerId === null) { setStatus('활성 레이어 없음'); return; }
+        const box = document.getElementById(`layer-box-${activeLayerId}`);
+        if (!box) return;
+        const ta = box.querySelector('.layer-textarea');
+        if (!ta) return;
+
+        pushUndo();
+        const pos = ta.selectionStart;
+        const before = ta.value.substring(0, pos);
+        const after = ta.value.substring(ta.selectionEnd);
+        ta.value = before + ch + after;
+        ta.selectionStart = ta.selectionEnd = pos + ch.length;
+        const layer = layers.find(l => l.id === activeLayerId);
+        if (layer) {
+            layer.text = ta.value;
+            updateLayerDisplay(layer);
+            compositeAndPreview();
+        }
+        ta.focus();
+    }
+
+    // Palette menu
+    const paletteMenuEl = document.getElementById('paletteMenu');
+    document.getElementById('paletteMenuBtn').addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        document.querySelectorAll('.palette-menu.visible').forEach(m => m.classList.remove('visible'));
+        const rect = e.target.getBoundingClientRect();
+        paletteMenuEl.style.left = (rect.right + 4) + 'px';
+        paletteMenuEl.style.top = rect.top + 'px';
+        paletteMenuEl.classList.toggle('visible');
+    });
+    document.addEventListener('mousedown', (e) => {
+        if (!paletteMenuEl.contains(e.target) && e.target.id !== 'paletteMenuBtn') {
+            paletteMenuEl.classList.remove('visible');
+        }
+    });
+
+    async function paletteAction(action) {
+        paletteMenuEl.classList.remove('visible');
+        const set = paletteData.sets[paletteData.activeSetIndex];
+        const palette = set?.palettes[paletteData.activePaletteIndex];
+
+        switch (action) {
+            case 'addChar': {
+                const ch = await showInputModal('추가할 캐릭터 (1글자)');
+                if (ch && [...ch].length >= 1) {
+                    palette.chars.push([...ch][0]);
+                    renderPaletteGrid();
+                }
+                break;
+            }
+            case 'addPalette': {
+                const name = await showInputModal('새 팔레트 이름');
+                if (name) {
+                    set.palettes.push({ name, chars: [] });
+                    paletteData.activePaletteIndex = set.palettes.length - 1;
+                    renderPaletteSetSelect();
+                    renderPaletteGrid();
+                }
+                break;
+            }
+            case 'importPalette': {
+                // TODO: production에서는 파일 선택 → JSON 파싱 → SQLite 저장
+                setStatus('.wap 임포트 (production에서 구현)');
+                break;
+            }
+            case 'exportPalette': {
+                // TODO: production에서는 SQLite → JSON → 파일 다운로드
+                if (!palette) break;
+                const json = JSON.stringify({ name: palette.name, chars: palette.chars }, null, 2);
+                const blob = new Blob([json], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `${palette.name}.wap`;
+                a.click();
+                URL.revokeObjectURL(a.href);
+                setStatus(`팔레트 "${palette.name}" 익스포트됨`);
+                break;
+            }
+            case 'importSet': {
+                // TODO: production에서는 .waps 파일 → 팔레트세트 전체 교체 → SQLite
+                setStatus('.waps 임포트 (production에서 구현)');
+                break;
+            }
+            case 'exportSet': {
+                const json = JSON.stringify({ name: set.name, palettes: set.palettes }, null, 2);
+                const blob = new Blob([json], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `${set.name}.waps`;
+                a.click();
+                URL.revokeObjectURL(a.href);
+                setStatus(`팔레트세트 "${set.name}" 익스포트됨`);
+                break;
+            }
+        }
+    }
+
+    // Init palette
+    function initPalette() {
+        renderPaletteSetSelect();
+        renderPaletteGrid();
+    }
+
+    // ===================== LAYER DRAG REORDER =====================
+
+    let layerDragState = null; // { layerId, startY, itemEl }
+
+    layerListEl.addEventListener('mousedown', (e) => {
+        const handle = e.target.closest('.drag-handle');
+        if (!handle) return;
+        const item = handle.closest('.layer-item');
+        if (!item) return;
+        e.preventDefault();
+
+        const dragId = parseInt(item.dataset.layerId);
+        layerDragState = {
+            layerId: dragId,
+            startY: e.clientY,
+            itemEl: item,
+        };
+        // Mark all items being moved
+        const moveIds = selectedLayerIds.has(dragId) ? selectedLayerIds : new Set([dragId]);
+        layerListEl.querySelectorAll('.layer-item').forEach(el => {
+            if (moveIds.has(parseInt(el.dataset.layerId))) el.classList.add('dragging-item');
+        });
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!layerDragState) return;
+
+        // Clear all indicators
+        layerListEl.querySelectorAll('.drag-over-above, .drag-over-below').forEach(el => {
+            el.classList.remove('drag-over-above', 'drag-over-below');
+        });
+
+        // Find which item we're hovering over
+        const items = [...layerListEl.querySelectorAll('.layer-item')];
+        for (const item of items) {
+            if (item === layerDragState.itemEl) continue;
+            const rect = item.getBoundingClientRect();
+            const midY = rect.top + rect.height / 2;
+            if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
+                if (e.clientY < midY) {
+                    item.classList.add('drag-over-above');
+                } else {
+                    item.classList.add('drag-over-below');
+                }
+                break;
+            }
+        }
+    });
+
+    document.addEventListener('mouseup', (e) => {
+        if (!layerDragState) return;
+
+        layerListEl.querySelectorAll('.dragging-item').forEach(el => el.classList.remove('dragging-item'));
+
+        // Find drop target
+        const target = layerListEl.querySelector('.drag-over-above, .drag-over-below');
+        if (target) {
+            const isAbove = target.classList.contains('drag-over-above');
+            const targetId = parseInt(target.dataset.layerId);
+            target.classList.remove('drag-over-above', 'drag-over-below');
+
+            // layers array: index 0 = bottom, last = top
+            // List is rendered in reverse: top first
+            // Move all selected layers (or just the dragged one if not selected)
+            const moveIds = selectedLayerIds.has(layerDragState.layerId)
+                ? new Set(selectedLayerIds)
+                : new Set([layerDragState.layerId]);
+
+            if (!moveIds.has(targetId)) {
+                pushUndo();
+
+                // Extract selected layers in their current order
+                const moved = layers.filter(l => moveIds.has(l.id));
+                layers = layers.filter(l => !moveIds.has(l.id));
+
+                // Find insert position
+                let dstIdx = layers.findIndex(l => l.id === targetId);
+                if (isAbove) {
+                    layers.splice(dstIdx + 1, 0, ...moved);
+                } else {
+                    layers.splice(dstIdx, 0, ...moved);
+                }
+
+                // Update z-index on canvas
+                layers.forEach((l, i) => {
+                    const el = document.getElementById(`layer-box-${l.id}`);
+                    if (el) el.style.zIndex = i + 1;
+                });
+
+                renderLayerList();
+                compositeAndPreview();
+            }
+        } else {
+            layerListEl.querySelectorAll('.drag-over-above, .drag-over-below').forEach(el => {
+                el.classList.remove('drag-over-above', 'drag-over-below');
+            });
+        }
+
+        layerDragState = null;
+    });
+
+    // ===================== COMPOSITING =====================
+    //
+    // 레이어 합성 알고리즘:
+    // 1. 모든 visible 텍스트 레이어를 순회 (이미지 레이어 제외)
+    // 2. 각 레이어의 각 문자를 measureText()로 픽셀 x좌표 계산
+    // 3. 전체 문자를 x좌표 기준으로 정렬
+    // 4. 겹치는 위치에서는 상위 레이어(layerIndex 큰 쪽)가 우선
+    // 5. 문자 사이 빈 공간을 fillGap()으로 유니코드 스페이스 조합으로 채움
+    //
+    // 핵심 원칙:
+    //   - 공백 문자 = 투명 (아래 레이어가 비침)
+    //   - 비공백 문자 = 불투명 (위 레이어가 아래를 덮음)
+    //   - 프로포셔널 폰트이므로 "몇 번째 칸"이 아닌 픽셀 좌표 기반
+    //
+    // fillGap(targetWidth):
+    //   주어진 픽셀 폭을 유니코드 스페이스 조합으로 채움.
+    //   greedy 방식: 넓은 스페이스부터 맞춰보고 나머지를 좁은 것으로 채움.
+    //   오차는 가장 좁은 스페이스(Hair Space ~1px) 미만.
+    //
+    // compositeLayersSubset(subset, originX, originY):
+    //   병합(merge) 시 선택된 레이어만 합성. origin 보정으로 불필요한 여백 제거.
+
+    // 유니코드 공백 문자인지 판별. 합성 시 "투명"으로 취급.
+    function isTransparent(ch) {
+        if (!ch) return true;
+        const code = ch.codePointAt(0);
+        return (
+            code === 0x0020 || code === 0x00A0 ||
+            code === 0x2000 || code === 0x2001 || code === 0x2002 || code === 0x2003 ||
+            code === 0x2004 || code === 0x2005 || code === 0x2006 || code === 0x2007 ||
+            code === 0x2008 || code === 0x2009 || code === 0x200A || code === 0x200B ||
+            code === 0x3000
+        );
+    }
+
+    // 문자열의 각 문자별 { char, x좌표, 폭 }을 반환.
+    // 합성 시 레이어 내 문자들의 절대 픽셀 위치 계산에 사용.
+    function measureString(str) {
+        const chars = [...str];
+        const result = [];
+        let x = 0;
+        for (const ch of chars) {
+            const w = measureCtx.measureText(ch).width;
+            result.push({ char: ch, x, width: w });
+            x += w;
+        }
+        return result;
+    }
+
+    // targetWidth 픽셀에 가장 가까운 유니코드 스페이스 조합을 반환.
+    // greedy: 넓은 것부터 빼가며 채움. tolerance=0.5px 허용.
+    function fillGap(targetWidth) {
+        if (targetWidth < 0.1) return { str: '', actualWidth: 0 };
+        let remaining = targetWidth;
+        let result = '';
+        let actualWidth = 0;
+        const tolerance = 0.5;
+
+        for (const sp of spaceWidths) {
+            while (remaining >= sp.width - tolerance) {
+                result += sp.char;
+                actualWidth += sp.width;
+                remaining -= sp.width;
+            }
+        }
+        return { str: result, actualWidth };
+    }
+
+    // 전체 합성: 모든 visible 텍스트 레이어를 합쳐 최종 AA 텍스트 생성.
+    // 결과는 프리뷰 패널에 표시되고, 복사/export 시 이 텍스트가 출력됨.
+    function compositeLayers() {
+        // Compute how many pixel lines we need
+        // Each layer contributes lines at its y offset
+        const visibleLayers = layers.filter(l => l.visible && l.type === 'text');
+        if (visibleLayers.length === 0) return [];
+
+        // Find the pixel range
+        let maxPixelLine = 0;
+        visibleLayers.forEach(layer => {
+            const lineCount = layer.text.split('\n').length;
+            const bottomPx = layer.y + 4 + lineCount * LINE_HEIGHT; // 4px padding
+            maxPixelLine = Math.max(maxPixelLine, bottomPx);
+        });
+
+        const totalLines = Math.ceil(maxPixelLine / LINE_HEIGHT);
+        const resultLines = [];
+
+        for (let lineIdx = 0; lineIdx < totalLines; lineIdx++) {
+            const lineTopPx = lineIdx * LINE_HEIGHT;
+            let placements = [];
+
+            visibleLayers.forEach((layer, layerIdx) => {
+                const layerLines = layer.text.split('\n');
+                const layerPaddingPx = 4;
+                // Which line of this layer falls on lineIdx?
+                const layerLineIdx = Math.round((lineTopPx - layer.y - layerPaddingPx) / LINE_HEIGHT);
+                if (layerLineIdx < 0 || layerLineIdx >= layerLines.length) return;
+
+                // Check if alignment is close enough
+                const expectedPx = layer.y + layerPaddingPx + layerLineIdx * LINE_HEIGHT;
+                if (Math.abs(expectedPx - lineTopPx) > LINE_HEIGHT / 2) return;
+
+                const lineText = layerLines[layerLineIdx];
+                const measured = measureString(lineText);
+                const layerXOffset = layer.x + layerPaddingPx; // 4px padding
+
+                measured.forEach(m => {
+                    if (!isTransparent(m.char)) {
+                        placements.push({
+                            char: m.char,
+                            x: m.x + layerXOffset,
+                            width: m.width,
+                            layerIndex: layerIdx,
+                        });
+                    }
+                });
+            });
+
+            if (placements.length === 0) {
+                resultLines.push('');
+                continue;
+            }
+
+            placements.sort((a, b) => a.x - b.x || a.layerIndex - b.layerIndex);
+
+            // Resolve overlaps (higher layerIndex wins)
+            const resolved = [];
+            for (const p of placements) {
+                let dominated = false;
+                for (let i = resolved.length - 1; i >= 0; i--) {
+                    const r = resolved[i];
+                    if (p.x < r.x + r.width && p.x + p.width > r.x) {
+                        if (p.layerIndex > r.layerIndex) {
+                            resolved.splice(i, 1);
+                        } else {
+                            dominated = true;
+                            break;
+                        }
+                    }
+                }
+                if (!dominated) resolved.push(p);
+            }
+
+            resolved.sort((a, b) => a.x - b.x);
+
+            // Build output line
+            let output = '';
+            let currentX = 0;
+            for (const p of resolved) {
+                const gap = p.x - currentX;
+                if (gap > 0.5) {
+                    output += fillGap(gap).str;
+                }
+                output += p.char;
+                currentX = p.x + p.width;
+            }
+
+            resultLines.push(output);
+        }
+
+        // Trim trailing empty lines
+        while (resultLines.length > 0 && resultLines[resultLines.length - 1].trim() === '') {
+            resultLines.pop();
+        }
+
+        return resultLines;
+    }
+
+    // 합성 실행 → 프리뷰 갱신.
+    // 레이어 편집/이동/추가/삭제 시마다 자동 호출됨.
+    // 프리뷰 textarea 크기는 캔버스 safe area에 맞춤 (1:1 대응).
+    function compositeAndPreview() {
+        const lines = compositeLayers();
+
+        // 합성 결과를 캔버스 높이에 맞춰 빈 줄로 패딩
+        const safeW = safeArea.offsetWidth;
+        const safeH = safeArea.offsetHeight;
+        const totalLines = Math.ceil(safeH / LINE_HEIGHT);
+        while (lines.length < totalLines) lines.push('');
+
+        const text = lines.join('\n');
+        const ta = document.getElementById('previewTextarea');
+        ta.value = text;
+
+        // 프리뷰 textarea 크기 = safe area 크기 + padding/border 보정
+        const pad = 12 * 2;
+        const border = 2;
+        ta.style.width = (safeW + pad + border) + 'px';
+        ta.style.height = (safeH + pad + border) + 'px';
+    }
+
+    let previewPosition = 'right'; // 'right' | 'bottom'
+    let previewCollapsed = false;
+
+    function togglePreviewPosition() {
+        const main = document.querySelector('.main');
+        const preview = document.querySelector('.preview-panel');
+        const resize = document.getElementById('rightResize');
+        const btn = document.getElementById('previewPosBtn');
+
+        if (previewPosition === 'right') {
+            previewPosition = 'bottom';
+            // Wrap canvas-area + layer-panel + leftResize in a container
+            if (!document.querySelector('.canvas-container')) {
+                const container = document.createElement('div');
+                container.className = 'canvas-container';
+                const children = [...main.children].filter(el =>
+                    !el.classList.contains('preview-panel') && el.id !== 'rightResize'
+                );
+                children.forEach(el => container.appendChild(el));
+                main.prepend(container);
+            }
+            main.classList.add('preview-bottom');
+            preview.style.width = '';
+            btn.textContent = '▶ 우측';
+        } else {
+            previewPosition = 'right';
+            // Unwrap container
+            const container = document.querySelector('.canvas-container');
+            if (container) {
+                const children = [...container.children];
+                children.forEach(el => main.insertBefore(el, container));
+                container.remove();
+            }
+            main.classList.remove('preview-bottom');
+            preview.style.height = '';
+            preview.style.width = '';
+            btn.textContent = '▼ 하단';
+        }
+    }
+
+    function togglePreviewCollapse() {
+        const preview = document.querySelector('.preview-panel');
+        const btn = document.getElementById('previewCollapseBtn');
+        previewCollapsed = !previewCollapsed;
+        preview.classList.toggle('collapsed', previewCollapsed);
+        btn.textContent = previewCollapsed ? '펼치기' : '접기';
+    }
+
+    function copyPreview() {
+        const textarea = document.getElementById('previewTextarea');
+        textarea.select();
+        navigator.clipboard.writeText(textarea.value);
+        setStatus('Copied to clipboard');
+    }
+
+    // ===================== QUICK EDIT MODAL =====================
+
+    const qeOverlay = document.getElementById('qeOverlay');
+    const qeImg = document.getElementById('qeImg');
+    const qeCanvas = document.getElementById('qeCanvas');
+    const qeTextarea = document.getElementById('qeTextarea');
+    const qeDisplay = document.getElementById('qeDisplay');
+    const qeFileInput = document.getElementById('qeFileInput');
+
+    let qeImgNatW = 0, qeImgNatH = 0;
+    let qeImgX = 0, qeImgY = 0;
+    let qeImgDrag = null;
+
+    function openQuickEdit() {
+        qeOverlay.classList.add('visible');
+        qeTextarea.value = '';
+        qeDisplay.textContent = '';
+        qeImg.style.display = 'none';
+        qeImgX = 0; qeImgY = 0;
+        qeImgNatW = 0; qeImgNatH = 0;
+        document.getElementById('qeScale').value = 100;
+        document.getElementById('qeScaleVal').textContent = '100%';
+        document.getElementById('qeOpacity').value = 50;
+        document.getElementById('qeOpacityVal').textContent = '50%';
+        qeCanvas.style.width = '400px';
+        qeCanvas.style.height = '300px';
+        document.getElementById('qeTextColor').value = '#000000';
+        qeDisplay.style.color = '#000000';
+        qeTextarea.style.caretColor = '#000000';
+        qeTextarea.focus();
+    }
+
+    function qeClose() {
+        qeOverlay.classList.remove('visible');
+    }
+
+    function qeLoadImage() {
+        qeFileInput.click();
+    }
+
+    qeFileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            qeImg.onload = () => {
+                qeImgNatW = qeImg.naturalWidth;
+                qeImgNatH = qeImg.naturalHeight;
+                qeImgX = 0; qeImgY = 0;
+                qeUpdateImage();
+                qeImg.style.display = 'block';
+            };
+            qeImg.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+        e.target.value = '';
+    });
+
+    function qeUpdateImage() {
+        const scale = parseInt(document.getElementById('qeScale').value) / 100;
+        const opacity = parseInt(document.getElementById('qeOpacity').value) / 100;
+        qeImg.style.width = (qeImgNatW * scale) + 'px';
+        qeImg.style.height = (qeImgNatH * scale) + 'px';
+        qeImg.style.left = qeImgX + 'px';
+        qeImg.style.top = qeImgY + 'px';
+        qeImg.style.opacity = opacity;
+    }
+
+    document.getElementById('qeScale').addEventListener('input', (e) => {
+        document.getElementById('qeScaleVal').textContent = e.target.value + '%';
+        qeUpdateImage();
+    });
+
+    document.getElementById('qeOpacity').addEventListener('input', (e) => {
+        document.getElementById('qeOpacityVal').textContent = e.target.value + '%';
+        qeUpdateImage();
+    });
+
+    document.getElementById('qeTextColor').addEventListener('input', (e) => {
+        qeDisplay.style.color = e.target.value;
+        qeTextarea.style.caretColor = e.target.value;
+    });
+
+    // Canvas resize drag
+    let qeCanvasDrag = null;
+
+    document.getElementById('qeCanvasResize').addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        qeCanvasDrag = {
+            startX: e.clientX,
+            startY: e.clientY,
+            origW: qeCanvas.offsetWidth,
+            origH: qeCanvas.offsetHeight,
+        };
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!qeCanvasDrag) return;
+        const w = Math.max(100, qeCanvasDrag.origW + (e.clientX - qeCanvasDrag.startX));
+        const h = Math.max(60, qeCanvasDrag.origH + (e.clientY - qeCanvasDrag.startY));
+        qeCanvas.style.width = w + 'px';
+        qeCanvas.style.height = h + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (qeCanvasDrag) qeCanvasDrag = null;
+    });
+
+    // Image drag to move
+    document.getElementById('qeImgMove').addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        qeImgDrag = { startX: e.clientX, startY: e.clientY, origX: qeImgX, origY: qeImgY };
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!qeImgDrag) return;
+        qeImgX = qeImgDrag.origX + (e.clientX - qeImgDrag.startX);
+        qeImgY = qeImgDrag.origY + (e.clientY - qeImgDrag.startY);
+        qeUpdateImage();
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (qeImgDrag) qeImgDrag = null;
+    });
+
+    // Text display sync
+    // Spacebar dot cycling for quick edit
+    let qeDotIndex = 0, qeDotStartPos = -1, qeDotCurrentLen = 0;
+    function qeResetDot() { qeDotIndex = 0; qeDotStartPos = -1; qeDotCurrentLen = 0; }
+
+    qeTextarea.addEventListener('keydown', (e) => {
+        if (e.key === ' ') {
+            e.preventDefault();
+            const curPos = qeTextarea.selectionStart;
+            if (qeDotStartPos === -1) {
+                qeDotStartPos = curPos;
+            } else if (curPos !== qeDotStartPos + qeDotCurrentLen) {
+                qeResetDot();
+                qeDotStartPos = curPos;
+            }
+            const before = qeTextarea.value.substring(0, qeDotStartPos);
+            const after = qeTextarea.value.substring(qeDotStartPos + qeDotCurrentLen);
+            const newDot = getDotString(qeDotIndex);
+            qeDotCurrentLen = newDot.length;
+            qeTextarea.value = before + newDot + after;
+            qeTextarea.selectionStart = qeTextarea.selectionEnd = qeDotStartPos + qeDotCurrentLen;
+            qeDotIndex++;
+            qeTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+        } else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+            qeResetDot();
+        }
+    });
+
+    qeTextarea.addEventListener('input', () => {
+        qeDisplay.textContent = qeTextarea.value;
+    });
+
+    // Insert into document
+    function qeInsert() {
+        const text = qeTextarea.value;
+        if (!text.trim()) {
+            setStatus('삽입할 텍스트가 없습니다');
+            return;
+        }
+        const w = parseInt(qeCanvas.style.width);
+        const h = parseInt(qeCanvas.style.height);
+        const offsetBase = layers.length * 30;
+        const textColor = document.getElementById('qeTextColor').value;
+        const newLayer = createLayer(text, 20 + offsetBase, 20 + offsetBase, w, h, { textColor });
+        newLayer.name = 'Quick Edit';
+        const box = document.getElementById(`layer-box-${newLayer.id}`);
+        if (box) {
+            box.style.width = newLayer.w + 'px';
+            box.style.height = newLayer.h + 'px';
+        }
+        renderLayerList();
+        compositeAndPreview();
+        qeClose();
+        setStatus('간이 편집 레이어 삽입됨');
+    }
+
+    // Close on Escape
+    qeOverlay.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') qeClose();
+    });
+
+    // ===================== PANEL RESIZE =====================
+
+    {
+        const layerPanel = document.getElementById('leftPanel');
+        const previewPanel = document.querySelector('.preview-panel');
+        const leftHandle = document.getElementById('leftResize');
+        const rightHandle = document.getElementById('rightResize');
+        let panelDrag = null;
+
+        leftHandle.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            panelDrag = { side: 'left', startX: e.clientX, origW: layerPanel.offsetWidth };
+            leftHandle.classList.add('dragging');
+        });
+
+        rightHandle.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            panelDrag = {
+                side: 'right',
+                startX: e.clientX,
+                startY: e.clientY,
+                origW: previewPanel.offsetWidth,
+                origH: previewPanel.offsetHeight,
+            };
+            rightHandle.classList.add('dragging');
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!panelDrag) return;
+            if (panelDrag.side === 'left') {
+                const w = Math.max(150, Math.min(500, panelDrag.origW + (e.clientX - panelDrag.startX)));
+                layerPanel.style.width = w + 'px';
+            } else if (previewPosition === 'bottom') {
+                const h = Math.max(100, Math.min(600, panelDrag.origH - (e.clientY - panelDrag.startY)));
+                previewPanel.style.height = h + 'px';
+            } else {
+                const w = Math.max(200, Math.min(600, panelDrag.origW - (e.clientX - panelDrag.startX)));
+                previewPanel.style.width = w + 'px';
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (panelDrag) {
+                leftHandle.classList.remove('dragging');
+                rightHandle.classList.remove('dragging');
+                panelDrag = null;
+            }
+        });
+    }
+
+    // Tab bar focus tracking
+    document.getElementById('tabBar').addEventListener('mousedown', () => { tabBarFocused = true; });
+    document.addEventListener('mousedown', (e) => {
+        if (!e.target.closest('.tab-bar')) tabBarFocused = false;
+    });
+
+    // ===================== CANVAS RESIZE =====================
+
+    let canvasResizeDrag = null;
+
+    document.getElementById('canvasResizeHandle').addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        canvasResizeDrag = {
+            startX: e.clientX,
+            startY: e.clientY,
+            origW: canvasEl.offsetWidth,
+            origH: canvasEl.offsetHeight,
+        };
+    });
+
+    function getLayersBound() {
+        let maxR = 0, maxB = 0;
+        layers.forEach(l => {
+            maxR = Math.max(maxR, l.x + l.w);
+            maxB = Math.max(maxB, l.y + l.h);
+        });
+        return { right: maxR, bottom: maxB };
+    }
+
+    document.addEventListener('mousemove', (e) => {
+        if (!canvasResizeDrag) return;
+        const dx = e.clientX - canvasResizeDrag.startX;
+        const dy = e.clientY - canvasResizeDrag.startY;
+        const bound = getLayersBound();
+        const minW = CANVAS_MARGIN * 2 + bound.right;
+        const minH = CANVAS_MARGIN * 2 + bound.bottom;
+        canvasEl.style.width = Math.max(minW, canvasResizeDrag.origW + dx) + 'px';
+        canvasEl.style.height = Math.max(minH, canvasResizeDrag.origH + dy) + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (canvasResizeDrag) {
+            canvasResizeDrag = null;
+            updateSafeArea();
+            drawGrid();
+            drawLayerGuides();
+            compositeAndPreview();
+        }
+    });
+
+    // ===================== UTILS =====================
+
+    function setStatus(text) {
+        document.getElementById('statusText').textContent = text;
+    }
+
+    function updateCursorInfo() {
+        if (activeLayerId === null) return;
+        const box = document.getElementById(`layer-box-${activeLayerId}`);
+        if (!box) return;
+        const ta = box.querySelector('.layer-textarea');
+        if (!ta || document.activeElement !== ta) return;
+
+        const pos = ta.selectionStart;
+        const text = ta.value.substring(0, pos);
+        const lineArr = text.split('\n');
+        document.getElementById('cursorInfo').textContent = `Ln ${lineArr.length}, Col ${lineArr[lineArr.length - 1].length}`;
+    }
+
+    function addLayer() {
+        const offsetBase = layers.length * 30;
+        createLayer('', 20 + offsetBase, 20 + offsetBase, 250, 120);
+        compositeAndPreview();
+        setStatus('Layer added');
+    }
+
+    function addImageLayer() {
+        document.getElementById('imageInput').click();
+    }
+
+    document.getElementById('imageInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const img = new Image();
+            img.onload = () => {
+                const offsetBase = layers.length * 30;
+                createLayer('', 20 + offsetBase, 20 + offsetBase, img.naturalWidth, img.naturalHeight, {
+                    type: 'image',
+                    imageSrc: ev.target.result,
+                });
+                compositeAndPreview();
+                setStatus('이미지 레이어 추가됨');
+            };
+            img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+        e.target.value = '';
+    });
+
+    // ===================== KEYBOARD =====================
+
+    document.addEventListener('keydown', (e) => {
+        // Undo/Redo
+        if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+            e.preventDefault();
+            if (e.shiftKey) { redo(); } else { undo(); }
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+            e.preventDefault();
+            redo();
+        }
+
+        const inTextarea = document.activeElement?.classList.contains('layer-textarea');
+        if ((e.ctrlKey || e.metaKey) && !inTextarea) {
+            if (e.key === 'c') {
+                e.preventDefault();
+                if (tabBarFocused) { copyDocument(); } else { copyLayer(); }
+            }
+            if (e.key === 'v') {
+                e.preventDefault();
+                if (tabBarFocused && docClipboard) { pasteDocument(); } else { pasteLayer(); }
+            }
+        }
+    });
+
+    // ===================== INIT =====================
+
+    async function init() {
+        try {
+            await document.fonts.load(`${FONT_SIZE}px Saitamaar`);
+            await new Promise(r => setTimeout(r, 300));
+        } catch (e) {}
+
+        initSpaceWidths();
+        initPalette();
+
+        // Redraw on canvas resize
+        new ResizeObserver(() => { updateSafeArea(); drawGrid(); drawLayerGuides(); }).observe(canvasEl);
+
+        // Create initial document with sample layers
+        const doc = createDocument('문서 1');
+        project.activeDocId = doc.id;
+        restoreDocState();
+
+        createLayer(
+            '　 ∧＿∧\n　（　´∀｀）\n　（　　　）\n　｜ ｜　|\n　（＿_）＿）',
+            30, 30, 180, 110
+        );
+        createLayer(
+            '／￣￣￣￣￣￣￣￣\n＜　やるおだお！\n＼＿＿＿＿＿＿＿＿',
+            200, 20, 220, 76
+        );
+
+        saveCurrentDocState();
+        renderTabs();
+        compositeAndPreview();
+        setStatus('Ready');
+    }
+
+    init();
+</script>
+</body>
+</html>

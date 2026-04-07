@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>POC 2: Layer Compositing Algorithm</title>
+    <style>
+        @font-face {
+            font-family: "Saitamaar";
+            src: url("../Saitamaar-Regular.woff2") format("woff2");
+            font-display: swap;
+        }
+        @font-face {
+            font-family: "NanumGothicCoding";
+            src: url("../NanumGothicCoding.woff2") format("woff2");
+            font-display: swap;
+            unicode-range: U+AC00-D7A3, U+3130-318F;
+        }
+        :root {
+            --font-aa: "ＭＳ Ｐゴシック", "MS PGothic", "IPAMonaPGothic", Mona, Monapo, "Saitamaar", "NanumGothicCoding", monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; padding: 2rem; }
+        h1 { margin-bottom: 0.5rem; color: #2196f3; }
+        h2 { margin: 1.5rem 0 0.5rem; color: #64b5f6; font-size: 1.1rem; }
+        .desc { color: #888; margin-bottom: 1.5rem; font-size: 0.9rem; }
+
+        .test-section {
+            background: #222; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem;
+        }
+
+        .aa-display {
+            font-family: var(--font-aa);
+            font-size: 16px;
+            line-height: 18px;
+            white-space: pre;
+            background: #111;
+            padding: 12px;
+            border: 1px solid #333;
+            border-radius: 4px;
+            margin: 0.5rem 0;
+            min-height: 40px;
+        }
+
+        .layer-label {
+            font-size: 0.8rem;
+            color: #888;
+            margin-bottom: 2px;
+        }
+
+        .layer-display {
+            font-family: var(--font-aa);
+            font-size: 16px;
+            line-height: 18px;
+            white-space: pre;
+            background: #0a0a1a;
+            padding: 12px;
+            border: 1px solid #2a2a4a;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+        }
+
+        .composite-result {
+            border-color: #4caf50;
+            background: #0a1a0a;
+        }
+
+        .controls {
+            display: flex; gap: 0.5rem; margin: 0.5rem 0; flex-wrap: wrap;
+        }
+
+        textarea.layer-input {
+            font-family: var(--font-aa);
+            font-size: 16px;
+            line-height: 18px;
+            white-space: pre;
+            background: #111;
+            color: #e0e0e0;
+            padding: 12px;
+            border: 1px solid #444;
+            border-radius: 4px;
+            width: 100%;
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        button {
+            padding: 0.4rem 1rem;
+            background: #2196f3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        button:hover { background: #1976d2; }
+        button.secondary { background: #555; }
+        button.secondary:hover { background: #666; }
+
+        .result-box {
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 1rem;
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .visual-stack {
+            position: relative;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 12px;
+            min-height: 120px;
+            margin: 0.5rem 0;
+            overflow: hidden;
+        }
+
+        .visual-layer {
+            position: absolute;
+            font-family: var(--font-aa);
+            font-size: 16px;
+            line-height: 18px;
+            white-space: pre;
+            top: 12px;
+            left: 12px;
+        }
+
+        .metrics-debug {
+            font-family: monospace;
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 0.5rem;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>POC 2: Layer Compositing Algorithm</h1>
+    <p class="desc">
+        두 개 이상의 텍스트 레이어를 픽셀 좌표 기반으로 합성하여 올바른 AA 텍스트를 출력하는 알고리즘을 검증합니다.<br>
+        핵심: 공백은 투명, 비공백 문자는 상위 레이어가 덮음, 최종 출력은 적절한 스페이스 조합으로 간격 재현.
+    </p>
+
+    <div id="loading">폰트 로딩 중...</div>
+    <div id="content" style="display: none;">
+
+        <!-- Test A: Basic Compositing -->
+        <h2>Test A: 기본 합성 — 고정 테스트 케이스</h2>
+        <div class="test-section" id="testA"></div>
+
+        <!-- Test B: Interactive -->
+        <h2>Test B: 인터랙티브 합성</h2>
+        <div class="test-section">
+            <div class="layer-label">Layer 0 (아래)</div>
+            <textarea class="layer-input" id="layerInput0" placeholder="아래 레이어 텍스트...">　　 ∧＿∧
+　　（　´∀｀）
+　　（　　　）
+　　｜ ｜　|
+　　（＿_）＿）</textarea>
+
+            <div class="layer-label" style="margin-top:0.5rem;">Layer 1 (위)</div>
+            <textarea class="layer-input" id="layerInput1" placeholder="위 레이어 텍스트...">
+                     ／￣￣￣￣￣
+                    ＜　Hello!
+                     ＼＿＿＿＿＿</textarea>
+
+            <div class="controls" style="margin-top:0.5rem;">
+                <button onclick="runInteractive()">합성 실행</button>
+                <button class="secondary" onclick="addLayer()">+ 레이어 추가</button>
+            </div>
+
+            <div class="layer-label" style="margin-top:1rem;">시각적 스택 (레이어별 색상)</div>
+            <div class="visual-stack" id="visualStack" style="height: 150px;"></div>
+
+            <div class="layer-label">합성 결과 (텍스트)</div>
+            <div class="aa-display composite-result" id="compositeResult"></div>
+
+            <div class="layer-label">합성 결과 (복사용)</div>
+            <textarea class="layer-input" id="compositeText" readonly style="min-height:60px;background:#0a1a0a;border-color:#4caf50;"></textarea>
+
+            <div class="metrics-debug" id="metricsDebug"></div>
+        </div>
+
+        <!-- Test C: Space Reconstruction -->
+        <h2>Test C: 공백 복원 정확도</h2>
+        <div class="test-section">
+            <p style="font-size:0.85rem;color:#888;margin-bottom:0.5rem;">
+                합성 시 빈 구간을 유니코드 스페이스 조합으로 채울 때 원래 간격과 얼마나 일치하는지 검증합니다.
+            </p>
+            <div id="testC"></div>
+        </div>
+    </div>
+
+<script>
+    const CANVAS_FONT = '"ＭＳ Ｐゴシック", "MS PGothic", "IPAMonaPGothic", Mona, Monapo, Saitamaar, NanumGothicCoding, monospace';
+    const FONT_SIZE = 16;
+
+    // Shared canvas context for measuring
+    const measureCtx = document.createElement('canvas').getContext('2d');
+    measureCtx.font = `${FONT_SIZE}px ${CANVAS_FONT}`;
+
+    // Available space characters (narrowest to widest)
+    const SPACE_CHARS = [
+        { char: '\u200A', name: 'Hair' },      // ~1px
+        { char: '\u2009', name: 'Thin' },       // ~2px
+        { char: '\u2006', name: '6/em' },       // ~2.67px
+        { char: '\u2005', name: '4/em' },       // ~4px
+        { char: ' ',      name: 'SP' },         // ~4-5px
+        { char: '\u2004', name: '3/em' },       // ~5.33px
+        { char: '\u2002', name: 'En' },         // ~8px
+        { char: '\u2003', name: 'Em' },         // ~16px
+        { char: '\u3000', name: 'Ideo' },       // ~16px (全角)
+    ];
+
+    // Cache measured space widths
+    let spaceWidths = [];
+
+    function initSpaceWidths() {
+        spaceWidths = SPACE_CHARS.map(s => ({
+            ...s,
+            width: measureCtx.measureText(s.char).width
+        })).sort((a, b) => b.width - a.width); // widest first for greedy fill
+    }
+
+    /**
+     * Measure each character's pixel position in a string.
+     * Returns array of { char, x, width } for each character.
+     */
+    function measureString(str) {
+        const chars = [...str];
+        const result = [];
+        let x = 0;
+        for (const ch of chars) {
+            const w = measureCtx.measureText(ch).width;
+            result.push({ char: ch, x, width: w });
+            x += w;
+        }
+        return result;
+    }
+
+    /**
+     * Check if a character is "transparent" (space-like).
+     */
+    function isTransparent(ch) {
+        if (!ch) return true;
+        const code = ch.codePointAt(0);
+        // All Unicode space characters
+        return (
+            code === 0x0020 || // space
+            code === 0x00A0 || // nbsp
+            code === 0x2000 || // en quad
+            code === 0x2001 || // em quad
+            code === 0x2002 || // en space
+            code === 0x2003 || // em space
+            code === 0x2004 || // 3/em
+            code === 0x2005 || // 4/em
+            code === 0x2006 || // 6/em
+            code === 0x2007 || // figure space
+            code === 0x2008 || // punctuation space
+            code === 0x2009 || // thin space
+            code === 0x200A || // hair space
+            code === 0x200B || // zero-width space
+            code === 0x3000    // ideographic space
+        );
+    }
+
+    /**
+     * Reconstruct a gap of `targetWidth` pixels using optimal space character combination.
+     * Greedy approach: use largest fitting space, then smaller ones for remainder.
+     * Returns { str, actualWidth, error }.
+     */
+    function fillGap(targetWidth, tolerance = 0.5) {
+        if (targetWidth < 0.1) return { str: '', actualWidth: 0, error: 0 };
+
+        let remaining = targetWidth;
+        let result = '';
+        let actualWidth = 0;
+
+        // Greedy fill with available space chars
+        for (const sp of spaceWidths) {
+            while (remaining >= sp.width - tolerance) {
+                result += sp.char;
+                actualWidth += sp.width;
+                remaining -= sp.width;
+            }
+        }
+
+        return {
+            str: result,
+            actualWidth,
+            error: Math.abs(targetWidth - actualWidth)
+        };
+    }
+
+    /**
+     * Composite multiple layers into a single text output.
+     *
+     * Each layer is: { lines: string[], originX: number, originY: number }
+     * Layers are ordered bottom to top (last layer = topmost).
+     *
+     * Algorithm:
+     * 1. For each line, collect all non-transparent characters with their x positions from all layers.
+     * 2. Upper layers override lower layers at overlapping positions.
+     * 3. Reconstruct output line by filling gaps with optimal space combinations.
+     */
+    function compositeLayers(layers) {
+        // Find total line range
+        let maxLine = 0;
+        layers.forEach(layer => {
+            maxLine = Math.max(maxLine, layer.lines.length);
+        });
+
+        const resultLines = [];
+        const debugInfo = [];
+
+        for (let lineIdx = 0; lineIdx < maxLine; lineIdx++) {
+            // Collect all character placements for this line
+            // Each placement: { char, x, width, layerIndex }
+            let placements = [];
+
+            layers.forEach((layer, layerIdx) => {
+                if (lineIdx >= layer.lines.length) return;
+                const line = layer.lines[lineIdx];
+                const measured = measureString(line);
+
+                measured.forEach(m => {
+                    if (!isTransparent(m.char)) {
+                        placements.push({
+                            char: m.char,
+                            x: m.x + (layer.originX || 0),
+                            width: m.width,
+                            layerIndex: layerIdx
+                        });
+                    }
+                });
+            });
+
+            if (placements.length === 0) {
+                resultLines.push('');
+                continue;
+            }
+
+            // Sort by x position, then by layer index (higher = on top)
+            placements.sort((a, b) => a.x - b.x || a.layerIndex - b.layerIndex);
+
+            // Resolve overlaps: for overlapping positions, keep the topmost layer
+            const resolved = [];
+            for (const p of placements) {
+                // Check if this placement overlaps with any already resolved one
+                let dominated = false;
+                for (let i = resolved.length - 1; i >= 0; i--) {
+                    const r = resolved[i];
+                    // Overlap check: ranges [r.x, r.x+r.width) and [p.x, p.x+p.width)
+                    if (p.x < r.x + r.width && p.x + p.width > r.x) {
+                        // Overlap exists — keep the one from the higher layer
+                        if (p.layerIndex > r.layerIndex) {
+                            resolved.splice(i, 1); // remove lower layer char
+                        } else {
+                            dominated = true;
+                            break;
+                        }
+                    }
+                }
+                if (!dominated) {
+                    resolved.push(p);
+                }
+            }
+
+            // Sort resolved by x
+            resolved.sort((a, b) => a.x - b.x);
+
+            // Reconstruct line: fill gaps between characters with spaces
+            let output = '';
+            let currentX = 0;
+
+            for (const p of resolved) {
+                const gap = p.x - currentX;
+                if (gap > 0.5) {
+                    const fill = fillGap(gap);
+                    output += fill.str;
+                    currentX += fill.actualWidth;
+                }
+                output += p.char;
+                currentX = p.x + p.width;
+            }
+
+            resultLines.push(output);
+            debugInfo.push({ lineIdx, placements: resolved.length, totalChars: placements.length });
+        }
+
+        return { lines: resultLines, debug: debugInfo };
+    }
+
+    // ===================== TEST A =====================
+    function runTestA() {
+        const container = document.getElementById('testA');
+        container.innerHTML = '';
+
+        const testCases = [
+            {
+                name: '케이스 1: 겹치지 않는 두 레이어',
+                layers: [
+                    { lines: ['∧＿∧', '（´∀｀）'], originX: 0 },
+                    { lines: ['', '          Hello!'], originX: 0 },
+                ]
+            },
+            {
+                name: '케이스 2: 부분적으로 겹치는 레이어',
+                layers: [
+                    { lines: ['AAAAAAAAAA', 'BBBBBBBBBB'], originX: 0 },
+                    { lines: ['     XXXXX', '     YYYYY'], originX: 0 },
+                ]
+            },
+            {
+                name: '케이스 3: 완전히 덮는 레이어',
+                layers: [
+                    { lines: ['background text here'], originX: 0 },
+                    { lines: ['foreground覆覆覆覆覆'], originX: 0 },
+                ]
+            },
+            {
+                name: '케이스 4: 공백이 투명하게 작동하는지',
+                layers: [
+                    { lines: ['abcdefghij'], originX: 0 },
+                    { lines: ['   XX   YY'], originX: 0 },
+                ]
+            },
+        ];
+
+        testCases.forEach(tc => {
+            let html = `<h3 style="color:#ccc;margin:1rem 0 0.5rem;">${tc.name}</h3>`;
+
+            tc.layers.forEach((layer, i) => {
+                html += `<div class="layer-label">Layer ${i}${i === tc.layers.length - 1 ? ' (top)' : ' (bottom)'}</div>`;
+                html += `<div class="layer-display">${layer.lines.join('\n')}</div>`;
+            });
+
+            const result = compositeLayers(tc.layers);
+
+            html += `<div class="layer-label">합성 결과</div>`;
+            html += `<div class="aa-display composite-result">${result.lines.join('\n')}</div>`;
+
+            container.innerHTML += html;
+        });
+    }
+
+    // ===================== TEST B: Interactive =====================
+    let extraLayers = [];
+
+    function addLayer() {
+        const idx = 2 + extraLayers.length;
+        const container = document.getElementById('layerInput1').parentElement;
+        const div = document.createElement('div');
+        div.style.marginTop = '0.5rem';
+        div.innerHTML = `
+            <div class="layer-label">Layer ${idx} (위)</div>
+            <textarea class="layer-input extra-layer" placeholder="레이어 ${idx} 텍스트..."></textarea>
+        `;
+        container.insertBefore(div, document.querySelector('.controls'));
+        extraLayers.push(div.querySelector('textarea'));
+    }
+
+    function runInteractive() {
+        const layer0Text = document.getElementById('layerInput0').value;
+        const layer1Text = document.getElementById('layerInput1').value;
+
+        const layers = [
+            { lines: layer0Text.split('\n'), originX: 0 },
+            { lines: layer1Text.split('\n'), originX: 0 },
+        ];
+
+        extraLayers.forEach(textarea => {
+            layers.push({ lines: textarea.value.split('\n'), originX: 0 });
+        });
+
+        const result = compositeLayers(layers);
+
+        // Visual stack
+        const stack = document.getElementById('visualStack');
+        stack.innerHTML = '';
+        const colors = ['rgba(255,100,100,0.5)', 'rgba(100,255,100,0.5)', 'rgba(100,100,255,0.5)', 'rgba(255,255,100,0.5)'];
+        layers.forEach((layer, i) => {
+            const div = document.createElement('div');
+            div.className = 'visual-layer';
+            div.style.color = colors[i % colors.length];
+            div.textContent = layer.lines.join('\n');
+            stack.appendChild(div);
+        });
+
+        // Adjust stack height
+        const maxLines = Math.max(...layers.map(l => l.lines.length));
+        stack.style.height = (maxLines * 18 + 24) + 'px';
+
+        // Composite result
+        document.getElementById('compositeResult').textContent = result.lines.join('\n');
+        document.getElementById('compositeText').value = result.lines.join('\n');
+
+        // Debug info
+        const debug = document.getElementById('metricsDebug');
+        debug.innerHTML = '<strong>Debug:</strong><br>' +
+            result.debug.map(d => `Line ${d.lineIdx}: ${d.placements} chars resolved from ${d.totalChars} total`).join('<br>');
+    }
+
+    // ===================== TEST C: Space reconstruction =====================
+    function runTestC() {
+        const container = document.getElementById('testC');
+        container.innerHTML = '';
+
+        // Test: can we reconstruct specific pixel gaps accurately?
+        const testGaps = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 16, 20, 24, 32];
+
+        let html = '<table><tr><th>Target Gap (px)</th><th>Reconstructed</th><th>Actual Width</th><th>Error</th><th>Chars Used</th></tr>';
+
+        testGaps.forEach(gap => {
+            const fill = fillGap(gap);
+            const charNames = [...fill.str].map(ch => {
+                const sp = SPACE_CHARS.find(s => s.char === ch);
+                return sp ? sp.name : '?';
+            }).join('+');
+
+            const status = fill.error < 1.0 ? 'match' : 'mismatch';
+            html += `<tr>
+                <td>${gap}px</td>
+                <td>"${fill.str.replace(/ /g, '·')}" (${fill.str.length} chars)</td>
+                <td>${fill.actualWidth.toFixed(2)}px</td>
+                <td class="${status}">${fill.error.toFixed(2)}px</td>
+                <td>${charNames || '(empty)'}</td>
+            </tr>`;
+        });
+
+        html += '</table>';
+
+        // Also test: round-trip accuracy
+        html += '<h3 style="margin-top:1rem;color:#64b5f6;">Round-trip: 원본 문자열 → 측정 → 합성 → 재측정</h3>';
+
+        const roundTripTests = [
+            '　　 ∧＿∧',
+            '（　´∀｀）',
+            '　Hello World　',
+        ];
+
+        html += '<table><tr><th>Original</th><th>Original Width</th><th>Reconstructed Width</th><th>Error</th></tr>';
+
+        roundTripTests.forEach(str => {
+            const origWidth = measureCtx.measureText(str).width;
+
+            // Decompose: measure each char, then reconstruct with spaces
+            const measured = measureString(str);
+            const nonSpaceChars = measured.filter(m => !isTransparent(m.char));
+
+            // Reconstruct
+            let reconstructed = '';
+            let currentX = 0;
+            for (const p of nonSpaceChars) {
+                const gap = p.x - currentX;
+                if (gap > 0.5) {
+                    reconstructed += fillGap(gap).str;
+                }
+                reconstructed += p.char;
+                currentX = p.x + p.width;
+            }
+
+            const reconWidth = measureCtx.measureText(reconstructed).width;
+            const error = Math.abs(origWidth - reconWidth);
+            const status = error < 2.0 ? 'match' : 'mismatch';
+
+            html += `<tr>
+                <td style="font-family:var(--font-aa);font-size:16px;">${str}</td>
+                <td>${origWidth.toFixed(2)}px</td>
+                <td>${reconWidth.toFixed(2)}px</td>
+                <td class="${status}">${error.toFixed(2)}px</td>
+            </tr>`;
+        });
+
+        html += '</table>';
+        container.innerHTML = html;
+    }
+
+    // ===================== MAIN =====================
+    async function init() {
+        try {
+            await document.fonts.load(`${FONT_SIZE}px Saitamaar`);
+            await new Promise(r => setTimeout(r, 500));
+            const loaded = document.fonts.check(`${FONT_SIZE}px Saitamaar`);
+            if (!loaded) {
+                document.getElementById('loading').textContent = 'Warning: Saitamaar 폰트 로드 실패.';
+                document.getElementById('loading').style.color = '#f44336';
+            } else {
+                document.getElementById('loading').style.display = 'none';
+            }
+        } catch (e) {
+            document.getElementById('loading').textContent = 'Font error: ' + e.message;
+            document.getElementById('loading').style.color = '#f44336';
+        }
+
+        document.getElementById('content').style.display = 'block';
+        initSpaceWidths();
+        runTestA();
+        runInteractive();
+        runTestC();
+    }
+
+    init();
+</script>
+</body>
+</html>

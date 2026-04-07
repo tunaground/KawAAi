@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>KawAAi — 합성 결과</title>
+  <style>
+    @font-face {
+      font-family: "Saitamaar";
+      src: url("/fonts/Saitamaar-Regular.woff2") format("woff2");
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "NanumGothicCoding";
+      src: url("/fonts/NanumGothicCoding.woff2") format("woff2");
+      font-display: swap;
+      unicode-range: U+AC00-D7A3, U+3130-318F;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: sans-serif;
+      background: #f5f5f5;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .header {
+      padding: 0.4rem 0.75rem;
+      background: #eee;
+      border-bottom: 1px solid #ddd;
+      font-size: 0.75rem;
+      color: #888;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header button {
+      padding: 2px 8px;
+      background: #ddd;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 0.7rem;
+    }
+    .header button:hover { background: #ccc; }
+    textarea {
+      flex: 1;
+      font-family: "ＭＳ Ｐゴシック", "MS PGothic", "IPAMonaPGothic", Mona, Monapo, "Saitamaar", "NanumGothicCoding", monospace;
+      font-size: 16px;
+      line-height: 18px;
+      white-space: pre;
+      background: #fff;
+      color: #000;
+      border: none;
+      padding: 12px;
+      resize: none;
+      outline: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <span>합성 결과 (별도 창)</span>
+    <button id="copyBtn">복사</button>
+  </div>
+  <textarea id="preview" readonly></textarea>
+
+  <script>
+    // withGlobalTauri가 활성화되면 window.__TAURI__가 주입됨
+    // 주입 시점이 늦을 수 있으므로 폴링
+    function waitForTauri(cb, retries) {
+      if (window.__TAURI__) { cb(); return; }
+      if (retries <= 0) { console.error("Tauri not available"); return; }
+      setTimeout(function() { waitForTauri(cb, retries - 1); }, 100);
+    }
+
+    waitForTauri(function() {
+      var listen = window.__TAURI__.event.listen;
+      listen("preview-update", function(event) {
+        document.getElementById("preview").value = event.payload;
+      });
+    }, 30);
+
+    document.getElementById("copyBtn").addEventListener("click", function() {
+      navigator.clipboard.writeText(document.getElementById("preview").value);
+    });
+  </script>
+</body>
+</html>

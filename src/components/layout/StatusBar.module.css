@@ -1,0 +1,10 @@
+.statusBar {
+  background: var(--bg-secondary);
+  padding: 0.35rem 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  display: flex;
+  justify-content: space-between;
+  flex-shrink: 0;
+}

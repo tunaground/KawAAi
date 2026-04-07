@@ -1,0 +1,114 @@
+.item {
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  margin-bottom: 2px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid transparent;
+  color: var(--text-primary);
+}
+
+.item:hover {
+  background: var(--bg-tertiary);
+}
+
+.active {
+  border-color: var(--accent);
+  background: rgba(33, 150, 243, 0.1);
+}
+
+.selected {
+  background: rgba(33, 150, 243, 0.05);
+  border-color: rgba(33, 150, 243, 0.3);
+}
+
+.dragHandle {
+  cursor: grab;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  display: flex;
+}
+
+.dragHandle:hover {
+  color: var(--text-primary);
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
+.colorSwatch {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  background: none;
+}
+
+.colorSwatch::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.colorSwatch::-webkit-color-swatch {
+  border: none;
+  border-radius: 1px;
+}
+
+.name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+}
+
+.nameInput {
+  flex: 1;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  padding: 0 4px;
+  font-size: 0.75rem;
+  outline: none;
+  min-width: 0;
+}
+
+.dragOverAbove {
+  border-top: 2px solid var(--accent) !important;
+}
+
+.dragOverBelow {
+  border-bottom: 2px solid var(--accent) !important;
+}
+
+.draggingItem {
+  opacity: 0.4;
+}
+
+.btn {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
