@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from "react";
 import { FolderOpen, RefreshCw } from "lucide-react";
 import { useMltStore } from "../../stores/mltStore";
 import { useProjectStore } from "../../stores/projectStore";
@@ -21,6 +22,8 @@ export function MltSection() {
 
   const createLayer = useProjectStore((s) => s.createLayer);
   const layerCount = useProjectStore((s) => s.layers.length);
+
+  const [hoverPreview, setHoverPreview] = useState<{ text: string; x: number; y: number } | null>(null);
 
   const handleSelectDir = async () => {
     // Tauri 환경: plugin-dialog로 디렉토리 선택
@@ -176,6 +179,15 @@ export function MltSection() {
               key={sec!.startIdx + i}
               className={styles.item}
               onClick={() => insertEntry(entry)}
+              onMouseEnter={(e) => {
+                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                setHoverPreview({
+                  text: entry.text,
+                  x: rect.right + 8,
+                  y: rect.top,
+                });
+              }}
+              onMouseLeave={() => setHoverPreview(null)}
             >
               <div className={styles.preview}>
                 {entry.text.split("\n").slice(0, 3).join("\n")}
@@ -185,6 +197,33 @@ export function MltSection() {
           ))
         )}
       </div>
+
+      {hoverPreview && (
+        <HoverPopup
+          text={hoverPreview.text}
+          x={hoverPreview.x}
+          y={hoverPreview.y}
+        />
+      )}
+    </div>
+  );
+}
+
+function HoverPopup({ text, x, y }: { text: string; x: number; y: number }) {
+  const popupRef = useRef<HTMLDivElement>(null);
+  const [top, setTop] = useState(y);
+
+  useEffect(() => {
+    const el = popupRef.current;
+    if (!el) return;
+    const h = el.offsetHeight;
+    const maxY = window.innerHeight - h - 8;
+    setTop(Math.max(8, Math.min(y, maxY)));
+  }, [y, text]);
+
+  return (
+    <div ref={popupRef} className={styles.hoverPreview} style={{ left: x, top }}>
+      {text}
     </div>
   );
 }

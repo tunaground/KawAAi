@@ -24,17 +24,39 @@ interface MltState {
 }
 
 function buildSections(entries: MltEntry[]) {
-  if (entries.length <= 20) {
-    return [{ name: "전체", startIdx: 0, endIdx: entries.length }];
+  // 섹션 헤더(isSection=true)를 기준으로 분할
+  const sectionIndices: number[] = [];
+  entries.forEach((e, i) => { if (e.isSection) sectionIndices.push(i); });
+
+  if (sectionIndices.length === 0) {
+    // 섹션 헤더 없음 → 단일 섹션
+    return [{ name: "All", startIdx: 0, endIdx: entries.length }];
   }
-  const sections = [];
-  const chunk = 50;
-  for (let i = 0; i < entries.length; i += chunk) {
-    const end = Math.min(i + chunk, entries.length);
-    const firstName = entries[i].name || `#${i + 1}`;
-    sections.push({ name: `${i + 1}–${end} (${firstName})`, startIdx: i, endIdx: end });
+
+  const sections: { name: string; startIdx: number; endIdx: number }[] = [];
+  for (let i = 0; i < sectionIndices.length; i++) {
+    const idx = sectionIndices[i];
+    const nextIdx = i + 1 < sectionIndices.length ? sectionIndices[i + 1] : entries.length;
+    // 섹션 헤더 다음 항목부터 다음 섹션 헤더 전까지
+    const startIdx = idx + 1;
+    if (startIdx >= nextIdx) continue; // 빈 섹션 스킵
+    sections.push({
+      name: entries[idx].name || `#${idx + 1}`,
+      startIdx,
+      endIdx: nextIdx,
+    });
   }
-  return sections;
+
+  // 첫 번째 섹션 헤더 이전에 항목이 있으면 선두 섹션으로
+  if (sectionIndices[0] > 0) {
+    sections.unshift({
+      name: entries[0].isSection ? entries[0].name : "—",
+      startIdx: entries[0].isSection ? 1 : 0,
+      endIdx: sectionIndices[0],
+    });
+  }
+
+  return sections.length > 0 ? sections : [{ name: "All", startIdx: 0, endIdx: entries.length }];
 }
 
 /** 디렉토리 경로 저장 */
