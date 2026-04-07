@@ -9,6 +9,8 @@ import styles from "./Canvas.module.css";
 export function Canvas() {
   const layers = useProjectStore((s) => s.layers);
   const activeLayerId = useProjectStore((s) => s.activeLayerId);
+  const canvasSize = useProjectStore((s) => s.canvasSize);
+  const setCanvasSize = useProjectStore((s) => s.setCanvasSize);
   const viewSettings = useProjectStore((s) => s.viewSettings);
   const isDraggingLayer = useEditorStore((s) => s.isDraggingLayer);
 
@@ -235,6 +237,12 @@ export function Canvas() {
       canvasRef.current.style.height = Math.max(minH, drag.origH + dy) + "px";
     };
     const onUp = () => {
+      if (canvasResizeDrag.current && canvasRef.current) {
+        setCanvasSize({
+          width: canvasRef.current.offsetWidth,
+          height: canvasRef.current.offsetHeight,
+        });
+      }
       canvasResizeDrag.current = null;
     };
     document.addEventListener("mousemove", onMove);
@@ -259,7 +267,7 @@ export function Canvas() {
 
   return (
     <div className={styles.canvasArea}>
-      <div className={styles.canvas} ref={canvasRef}>
+      <div className={styles.canvas} ref={canvasRef} style={{ width: canvasSize.width, height: canvasSize.height }}>
         <div className={styles.canvasResizeHandle} onMouseDown={startCanvasResize} />
         <canvas className={styles.rulerTop} ref={rulerTopRef} />
         <canvas className={styles.rulerLeft} ref={rulerLeftRef} />

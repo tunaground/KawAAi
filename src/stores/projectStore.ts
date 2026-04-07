@@ -27,6 +27,8 @@ interface ProjectState {
   selectedLayerIds: Set<number>;
   nextLayerId: number;
   viewSettings: ViewSettings;
+  canvasSize: { width: number; height: number };
+  setCanvasSize: (size: { width: number; height: number }) => void;
 
   // 문서 관리
   createDocument: (name?: string) => Document;
@@ -61,6 +63,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   selectedLayerIds: new Set(),
   nextLayerId: 0,
   viewSettings: { snapEnabled: true, gridVisible: true, charGridEnabled: false },
+  canvasSize: { width: 600, height: 500 },
+  setCanvasSize: (size) => set({ canvasSize: size }),
 
   createDocument: (name = "새 문서") => {
     const state = get();
@@ -117,6 +121,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
     const updated: Document = {
       ...doc,
+      canvas: state.canvasSize,
       layers: state.layers,
       activeLayerId: state.activeLayerId,
       nextLayerId: state.nextLayerId,
@@ -140,6 +145,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       selectedLayerIds: doc.activeLayerId !== null ? new Set([doc.activeLayerId]) : new Set(),
       nextLayerId: doc.nextLayerId,
       viewSettings: doc.viewSettings,
+      canvasSize: doc.canvas,
     });
   },
 
@@ -159,6 +165,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       textColor: opts.textColor ?? "#000000",
       opacity: opts.opacity ?? (type === "image" ? 0.5 : 1),
       imageSrc: opts.imageSrc ?? "",
+      opaqueRanges: opts.opaqueRanges ?? [],
     };
     set({
       layers: [...state.layers, layer],

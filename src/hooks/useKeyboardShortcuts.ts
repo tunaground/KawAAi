@@ -41,9 +41,14 @@ export function useKeyboardShortcuts() {
       return;
     }
 
-    // Escape: 선택 해제
+    // Escape: 채색모드 해제 → 선택 해제
     if (e.key === "Escape") {
-      useProjectStore.getState().setActiveLayer(null);
+      const mode = useEditorStore.getState().editorMode;
+      if (mode !== "normal") {
+        useEditorStore.getState().setEditorMode("normal");
+      } else {
+        useProjectStore.getState().setActiveLayer(null);
+      }
       return;
     }
 

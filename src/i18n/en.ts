@@ -1,6 +1,9 @@
 export const en = {
   "header.merge": "Merge Layers",
   "header.quickEdit": "Layer Canvas",
+  "header.opaquePaint": "Opaque Paint",
+  "header.opaqueErase": "Erase Opaque",
+  "header.modeCancel": "Cancel Mode",
   "header.snap": "Snap",
   "header.grid": "Grid",
   "header.charGrid": "Char Grid",

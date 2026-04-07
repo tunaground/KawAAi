@@ -74,6 +74,7 @@ export function mergeSelectedLayers() {
     textColor: "#000000",
     opacity: 1,
     imageSrc: "",
+    opaqueRanges: [],
   };
 
   useProjectStore.setState({

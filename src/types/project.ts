@@ -29,6 +29,13 @@ export interface ViewSettings {
   charGridEnabled: boolean;
 }
 
+/** 공백 불투명 영역 — 캐릭터 포지션 기반 */
+export interface OpaqueRange {
+  line: number;      // 줄 번호 (0-based)
+  startCol: number;  // 시작 문자 인덱스 (inclusive)
+  endCol: number;    // 끝 문자 인덱스 (exclusive)
+}
+
 /**
  * 레이어.
  * type='text': AA 텍스트 편집 레이어
@@ -53,4 +60,7 @@ export interface Layer {
 
   /** type='image' 전용 — data URL */
   imageSrc: string;
+
+  /** 공백 불투명 영역 — 채색된 부분의 공백은 합성 시 하위 레이어를 가림 */
+  opaqueRanges: OpaqueRange[];
 }

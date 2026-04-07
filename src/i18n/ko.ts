@@ -2,6 +2,9 @@ export const ko = {
   // Header
   "header.merge": "레이어 병합",
   "header.quickEdit": "레이어 캔버스",
+  "header.opaquePaint": "공백 채색",
+  "header.opaqueErase": "공백 채색 제거",
+  "header.modeCancel": "모드 취소",
   "header.snap": "스냅",
   "header.grid": "그리드",
   "header.charGrid": "문자 그리드",

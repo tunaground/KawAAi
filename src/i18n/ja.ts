@@ -1,6 +1,9 @@
 export const ja = {
   "header.merge": "レイヤー結合",
   "header.quickEdit": "レイヤーキャンバス",
+  "header.opaquePaint": "空白塗り",
+  "header.opaqueErase": "空白塗り消去",
+  "header.modeCancel": "モードキャンセル",
   "header.snap": "スナップ",
   "header.grid": "グリッド",
   "header.charGrid": "文字グリッド",

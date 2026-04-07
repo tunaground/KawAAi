@@ -1,8 +1,9 @@
 import {
   FolderOpen, Save, Merge, PenTool, Magnet,
-  Grid3x3, LetterText, Settings,
+  Grid3x3, LetterText, Settings, Paintbrush, Eraser, X,
 } from "lucide-react";
 import { useProjectStore } from "../../stores/projectStore";
+import { useEditorStore, type EditorMode } from "../../stores/editorStore";
 import { useI18n } from "../../i18n";
 import styles from "./Header.module.css";
 
@@ -19,6 +20,12 @@ export function Header({ onOpenQuickEdit, onOpenSettings, onSave, onSaveAs: _onS
   const viewSettings = useProjectStore((s) => s.viewSettings);
   const setViewSetting = useProjectStore((s) => s.setViewSetting);
   const t = useI18n((s) => s.t);
+  const editorMode = useEditorStore((s) => s.editorMode);
+  const setEditorMode = useEditorStore((s) => s.setEditorMode);
+
+  const toggleMode = (mode: EditorMode) => {
+    setEditorMode(editorMode === mode ? "normal" : mode);
+  };
 
   return (
     <header className={styles.header}>
@@ -42,6 +49,33 @@ export function Header({ onOpenQuickEdit, onOpenSettings, onSave, onSaveAs: _onS
         <button className={styles.btn} onClick={onOpenQuickEdit} title={t("header.quickEdit")}>
           <PenTool size={16} />
         </button>
+
+        <div className={styles.separator} />
+
+        {/* 공백 채색 모드 */}
+        <button
+          className={`${styles.btn} ${editorMode === "opaquePaint" ? styles.active : ""}`}
+          onClick={() => toggleMode("opaquePaint")}
+          title="공백 채색"
+        >
+          <Paintbrush size={16} />
+        </button>
+        <button
+          className={`${styles.btn} ${editorMode === "opaqueErase" ? styles.active : ""}`}
+          onClick={() => toggleMode("opaqueErase")}
+          title="공백 채색 제거"
+        >
+          <Eraser size={16} />
+        </button>
+        {editorMode !== "normal" && (
+          <button
+            className={styles.btn}
+            onClick={() => setEditorMode("normal")}
+            title="모드 취소"
+          >
+            <X size={16} />
+          </button>
+        )}
 
         <div className={styles.separator} />
 

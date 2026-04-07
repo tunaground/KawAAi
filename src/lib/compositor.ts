@@ -14,7 +14,7 @@
  *   - 프로포셔널 폰트이므로 "몇 번째 칸"이 아닌 픽셀 좌표 기반
  */
 
-import type { Layer } from "../types/project";
+import type { Layer, OpaqueRange } from "../types/project";
 import { getMeasureCtx, measureString, LINE_HEIGHT, LAYER_PADDING } from "./fontMetrics";
 
 /** 합성용 공백 문자 목록. initSpaceWidths()에서 폭 측정 후 넓은 순 정렬. */
@@ -47,6 +47,11 @@ export function initSpaceWidths(): void {
   })).sort((a, b) => b.width - a.width); // greedy fill용 넓은 순 정렬
 
   _snapX = ctx.measureText(" ").width;
+}
+
+/** 캐릭터 포지션이 불투명 범위에 속하는지 체크 */
+function isInOpaqueRange(line: number, col: number, ranges: OpaqueRange[]): boolean {
+  return ranges.some(r => r.line === line && col >= r.startCol && col < r.endCol);
 }
 
 /** 유니코드 공백 문자인지 판별. 합성 시 "투명"으로 취급. */
@@ -120,8 +125,19 @@ export function compositeLayers(layers: Layer[]): string[] {
       const measured = measureString(lineText);
       const layerXOffset = layer.x + LAYER_PADDING;
 
-      measured.forEach((m) => {
+      measured.forEach((m, charIndex) => {
         if (!isTransparent(m.char)) {
+          placements.push({
+            char: m.char,
+            x: m.x + layerXOffset,
+            width: m.width,
+            layerIndex: layerIdx,
+          });
+        } else if (
+          layer.opaqueRanges?.length > 0 &&
+          isInOpaqueRange(layerLineIdx, charIndex, layer.opaqueRanges)
+        ) {
+          // 공백이지만 불투명 채색 영역 → placement 추가 (하위 레이어 차단)
           placements.push({
             char: m.char,
             x: m.x + layerXOffset,
@@ -218,8 +234,18 @@ export function compositeLayersSubset(
       const measured = measureString(lineText);
       const layerXOffset = layer.x - originX + LAYER_PADDING;
 
-      measured.forEach((m) => {
+      measured.forEach((m, charIndex) => {
         if (!isTransparent(m.char)) {
+          placements.push({
+            char: m.char,
+            x: m.x + layerXOffset,
+            width: m.width,
+            layerIndex: layerIdx,
+          });
+        } else if (
+          layer.opaqueRanges?.length > 0 &&
+          isInOpaqueRange(layerLineIdx, charIndex, layer.opaqueRanges)
+        ) {
           placements.push({
             char: m.char,
             x: m.x + layerXOffset,

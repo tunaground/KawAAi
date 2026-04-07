@@ -11,7 +11,13 @@ interface UndoSnapshot {
   nextLayerId: number;
 }
 
+export type EditorMode = "normal" | "opaquePaint" | "opaqueErase";
+
 interface EditorState {
+  // 에디터 모드
+  editorMode: EditorMode;
+  setEditorMode: (mode: EditorMode) => void;
+
   // 드래그
   dragState: DragState | null;
   isDraggingLayer: boolean;
@@ -37,6 +43,9 @@ interface EditorState {
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
+  editorMode: "normal",
+  setEditorMode: (mode) => set({ editorMode: mode }),
+
   dragState: null,
   isDraggingLayer: false,
   setDragState: (state) => set({ dragState: state }),
