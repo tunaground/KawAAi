@@ -6,7 +6,7 @@ import { saveUndoSnapshot } from "../stores/projectStore";
 import { setStatus } from "../stores/projectStore";
 import { t } from "../i18n";
 import { compositeLayersSubset } from "./compositor";
-import { getMeasureCtx, LINE_HEIGHT, LAYER_PADDING } from "./fontMetrics";
+import { getMeasureCtx, LAYER_PADDING } from "./fontMetrics";
 import { getSnapX } from "./compositor";
 
 /** 선택된 텍스트 레이어들을 합성하여 하나로 병합 */
@@ -30,8 +30,10 @@ export function mergeSelectedLayers() {
     minY = Math.min(minY, l.y);
   });
 
+  const { fontSize, lineHeight } = store;
+
   // 합성
-  const mergedLines = compositeLayersSubset(selected, minX, minY);
+  const mergedLines = compositeLayersSubset(selected, minX, minY, fontSize, lineHeight);
   const mergedText = mergedLines.join("\n");
 
   // 기존 레이어 제거
@@ -39,18 +41,18 @@ export function mergeSelectedLayers() {
   const remainingLayers = store.layers.filter((l) => !removedIds.has(l.id));
 
   // 크기 계산
-  const ctx = getMeasureCtx();
+  const ctx = getMeasureCtx(fontSize);
   const textLines = mergedText.split("\n");
   let maxW = 0;
   textLines.forEach((line) => {
     maxW = Math.max(maxW, ctx.measureText(line).width);
   });
   let w = Math.ceil(maxW + LAYER_PADDING * 2);
-  let h = textLines.length * LINE_HEIGHT + LAYER_PADDING * 2;
-  const snapX = getSnapX();
+  let h = textLines.length * lineHeight + LAYER_PADDING * 2;
+  const snapX = getSnapX(fontSize);
   if (store.viewSettings.snapEnabled) {
     w = Math.ceil(w / snapX) * snapX;
-    h = Math.ceil(h / LINE_HEIGHT) * LINE_HEIGHT;
+    h = Math.ceil(h / lineHeight) * lineHeight;
   }
 
   // 새 레이어

@@ -28,7 +28,7 @@ export function PanelResize({ side, targetRef }: PanelResizeProps) {
       const w =
         side === "left"
           ? Math.max(150, Math.min(maxW, dragRef.current.origW + dx))
-          : Math.max(200, Math.min(maxW, dragRef.current.origW - dx));
+          : Math.max(260, Math.min(maxW, dragRef.current.origW - dx));
       targetRef.current.style.width = w + "px";
     };
     const onUp = () => {

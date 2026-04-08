@@ -11,6 +11,8 @@ interface QuickEditModalProps {
 
 export function QuickEditModal({ open, onClose }: QuickEditModalProps) {
   const createLayer = useProjectStore((s) => s.createLayer);
+  const docFontSize = useProjectStore((s) => s.fontSize);
+  const docLineHeight = useProjectStore((s) => s.lineHeight);
   const t = useI18n((s) => s.t);
 
   const [text, setText] = useState("");
@@ -200,7 +202,7 @@ export function QuickEditModal({ open, onClose }: QuickEditModalProps) {
                 resizeRef.current = { startX: e.clientX, startY: e.clientY, origW: canvasW, origH: canvasH };
               }}
             />
-            <div className={styles.display} style={{ color: textColor }}>
+            <div className={styles.display} style={{ color: textColor, fontSize: `${docFontSize}px`, lineHeight: `${docLineHeight}px` }}>
               {text}
             </div>
             <textarea
@@ -210,7 +212,7 @@ export function QuickEditModal({ open, onClose }: QuickEditModalProps) {
               onChange={(e) => setText(e.target.value)}
               onKeyDown={handleKeyDown}
               spellCheck={false}
-              style={{ caretColor: textColor }}
+              style={{ caretColor: textColor, fontSize: `${docFontSize}px`, lineHeight: `${docLineHeight}px` }}
             />
           </div>
 

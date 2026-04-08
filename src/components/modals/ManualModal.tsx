@@ -1,10 +1,10 @@
 import {
-  X, FolderOpen, Save, Merge, PenTool, Paintbrush, Eraser,
+  X, FolderOpen, Save, Merge, PenTool, Paintbrush,
   Magnet, Grid3x3, LetterText, Settings, Plus, Image,
   GripVertical, Lock, Unlock, Eye, EyeOff, Trash2,
   Copy, Download, PanelBottom, PanelRight, ExternalLink,
   ChevronsRight, ChevronsLeft, MoreVertical, RefreshCw,
-  BookOpen, FileDown, FilePlus,
+  BookOpen, FileDown, FilePlus, Scaling, Ruler, Minus, Minimize2,
 } from "lucide-react";
 import { useI18n } from "../../i18n";
 import styles from "./ManualModal.module.css";
@@ -129,12 +129,28 @@ function ManualKo() {
       <p><I><Merge size={14} /></I> 텍스트 레이어 2개 이상 선택 후 병합 버튼 클릭. 합성 알고리즘으로 하나의 레이어로 합침.</p>
       <h3>복사/붙여넣기</h3>
       <p>레이어 선택 후 <K>Ctrl+C</K>/<K>Ctrl+V</K>. 텍스트 편집 중이 아닐 때 동작.</p>
+      <h3>스페이스 압축</h3>
+      <p><I><Minimize2 size={14} /></I> 선택된 텍스트 레이어의 연속 공백을 Em Space(U+2003)로 압축하여 캐릭터 수를 절약합니다. 16px 이상의 연속 공백 구간이 대상입니다.</p>
 
       <h2>캔버스</h2>
       <ul>
-        <li><strong>캔버스 크기 조절</strong> — 캔버스 우하단 모서리 드래그</li>
+        <li><strong>캔버스 크기 조절</strong> — 캔버스 우하단 모서리 드래그 (잠금 시 비활성)</li>
         <li><strong>레이어 이동</strong> — 레이어 우상단 삼각형 핸들 드래그</li>
         <li><strong>레이어 크기 조절</strong> — 레이어 우하단 삼각형 핸들 드래그</li>
+      </ul>
+      <h3>캔버스 설정</h3>
+      <p><I><Scaling size={14} /></I> 버튼으로 캔버스 설정 팝오버를 엽니다. 설정은 문서별로 독립 저장됩니다.</p>
+      <ul>
+        <li><strong>프리셋</strong> — 디스플레이 해상도별 캔버스 크기 프리셋 (모바일/태블릿/데스크탑)</li>
+        <li><strong>너비/높이</strong> — 가용영역 기준 캔버스 크기 (px 단위 직접 입력)</li>
+        <li><strong>캔버스 크기 잠금</strong> — 체크 시 드래그 리사이즈 비활성화</li>
+        <li><strong>폰트 크기</strong> — 캔버스 텍스트 폰트 크기 (px)</li>
+        <li><strong>행간</strong> — 줄 간격 (px). 잠금 시 폰트 크기에 비례하여 자동 조정, 해제 시 독립 조정 가능</li>
+      </ul>
+      <h3>눈금자 / 가이드</h3>
+      <ul>
+        <li><I><Ruler size={14} /></I> <strong>눈금자 단위</strong> — px/mm 전환. 버튼 우하단에 현재 단위 표시</li>
+        <li><strong>커스텀 가이드 선</strong> — 상단 룰러에서 좌우 드래그로 세로 가이드, 좌측 룰러에서 상하 드래그로 가로 가이드 생성. 드래그 중 위치(px/mm) 표시. 룰러에서 기존 가이드를 드래그하여 이동, 룰러 밖으로 드래그하여 제거</li>
       </ul>
       <h3>뷰 설정</h3>
       <ul>
@@ -152,10 +168,10 @@ function ManualKo() {
       <h2>공백 채색</h2>
       <p>AA에서 박스 안쪽 공백이 하위 레이어에 침범당하지 않도록 특정 영역의 공백을 불투명으로 마킹합니다.</p>
       <ul>
-        <li><I><Paintbrush size={14} /></I> <strong>채색 모드</strong> — 활성 레이어 위를 드래그하여 공백 채색. 노란색으로 표시.</li>
-        <li><I><Eraser size={14} /></I> <strong>제거 모드</strong> — 드래그하여 채색 제거</li>
-        <li><I><X size={14} /></I> 또는 <K>Escape</K> — 모드 취소</li>
-        <li>활성 버튼을 다시 누르면 일반 모드로 복귀</li>
+        <li><I><Paintbrush size={14} /></I> <strong>채색 모드</strong> — 버튼을 눌러 활성화, 다시 누르면 해제</li>
+        <li><strong>드래그</strong> — 활성 레이어 위를 드래그하여 공백 채색 (노란색 표시)</li>
+        <li><K>Shift</K>+<strong>드래그</strong> — 채색된 영역 제거</li>
+        <li><K>Escape</K> — 모드 해제</li>
       </ul>
 
       <h2>레이어 캔버스 (간이 편집)</h2>
@@ -175,7 +191,7 @@ function ManualKo() {
         <li><strong>문자 우클릭</strong> — 삭제</li>
         <li><I><MoreVertical size={14} /></I> <strong>메뉴</strong>:
           <ul>
-            <li>캐릭터 추가, 팔레트 추가, 팔레트 삭제</li>
+            <li>캐릭터 추가 (여러 문자 입력 시 개별 등록), 팔레트 추가, 팔레트 삭제</li>
             <li>팔레트 임포트/익스포트 (.aapal)</li>
             <li>팔레트세트 임포트/익스포트 (.aapals)</li>
           </ul>
@@ -196,6 +212,7 @@ function ManualKo() {
       <h2>합성 결과</h2>
       <p>모든 visible 텍스트 레이어를 합성한 최종 AA를 표시합니다.</p>
       <ul>
+        <li><I><Minus size={14} /></I> / <strong>숫자 입력</strong> / <I><Plus size={14} /></I> — 프리뷰 폰트 크기 조절 (캔버스 행간 비율 반영)</li>
         <li><I><Copy size={14} /></I> — 클립보드에 복사</li>
         <li><I><Download size={14} /></I> — .txt 파일로 내보내기 (문서명.txt)</li>
         <li><I><PanelBottom size={14} /></I>/<I><PanelRight size={14} /></I> — 패널 위치 전환 (하단/우측)</li>
@@ -228,7 +245,7 @@ function ManualKo() {
           <tr><td><K>Ctrl+Shift+Z</K> / <K>Ctrl+Y</K></td><td>다시 실행</td></tr>
           <tr><td><K>Ctrl+C</K></td><td>레이어 복사 (탭 포커스: 문서 복사)</td></tr>
           <tr><td><K>Ctrl+V</K></td><td>레이어 붙여넣기 (탭 포커스: 문서 붙여넣기)</td></tr>
-          <tr><td><K>Escape</K></td><td>채색 모드 해제 / 선택 해제</td></tr>
+          <tr><td><K>Escape</K></td><td>모드 해제 / 선택 해제</td></tr>
           <tr><td><K>Space</K></td><td>도트 문자 순환 입력</td></tr>
         </tbody>
       </table>
@@ -294,14 +311,31 @@ function ManualJa() {
         <li><I><GripVertical size={14} /></I> ドラッグで順序変更</li>
         <li><I><Lock size={14} /></I>/<I><Unlock size={14} /></I> ロック / <I><Eye size={14} /></I>/<I><EyeOff size={14} /></I> 表示 / <I><Trash2 size={14} /></I> 削除</li>
         <li><I><Merge size={14} /></I> レイヤー結合（2つ以上選択）</li>
+        <li><I><Minimize2 size={14} /></I> <strong>スペース圧縮</strong> — 選択レイヤーの連続空白をEm Space(U+2003)に圧縮してキャラクター数を節約（16px以上の区間が対象）</li>
         <li><K>Ctrl</K>+クリック: 複数選択、<K>Shift</K>+クリック: 範囲選択</li>
+      </ul>
+
+      <h2>キャンバス設定</h2>
+      <p><I><Scaling size={14} /></I> ボタンでキャンバス設定ポップオーバーを開きます。設定はドキュメント単位で保存されます。</p>
+      <ul>
+        <li><strong>プリセット</strong> — ディスプレイ解像度別キャンバスサイズプリセット</li>
+        <li><strong>幅/高さ</strong> — 使用可能領域基準キャンバスサイズ（px単位）</li>
+        <li><strong>キャンバスサイズ固定</strong> — ドラッグリサイズ無効化</li>
+        <li><strong>フォントサイズ</strong> — テキストフォントサイズ（px）</li>
+        <li><strong>行間</strong> — 行間隔（px）。ロック時フォントサイズに連動、解除時独立調整可能</li>
+      </ul>
+      <h3>ルーラー / ガイド</h3>
+      <ul>
+        <li><I><Ruler size={14} /></I> <strong>ルーラー単位</strong> — px/mm切替</li>
+        <li><strong>カスタムガイド線</strong> — 上ルーラーで左右ドラッグ→縦ガイド、左ルーラーで上下ドラッグ→横ガイド。ルーラーでドラッグして移動、ルーラー外にドラッグして削除</li>
       </ul>
 
       <h2>空白塗り</h2>
       <ul>
-        <li><I><Paintbrush size={14} /></I> 塗りモード — ドラッグで空白を不透明に（黄色表示）</li>
-        <li><I><Eraser size={14} /></I> 消去モード — ドラッグで塗り消去</li>
-        <li><I><X size={14} /></I> または <K>Escape</K> でモードキャンセル</li>
+        <li><I><Paintbrush size={14} /></I> <strong>塗りモード</strong> — ボタンで有効化、再度押すと解除</li>
+        <li><strong>ドラッグ</strong> — アクティブレイヤー上で空白を不透明に塗り（黄色表示）</li>
+        <li><K>Shift</K>+<strong>ドラッグ</strong> — 塗りを消去</li>
+        <li><K>Escape</K> — モード解除</li>
       </ul>
 
       <h2>テキスト編集</h2>
@@ -316,7 +350,7 @@ function ManualJa() {
       <ul>
         <li><strong>文字クリック</strong> — アクティブレイヤーのカーソル位置に挿入</li>
         <li><strong>文字右クリック</strong> — 削除</li>
-        <li><I><MoreVertical size={14} /></I> メニューからキャラクター追加、パレット管理、インポート/エクスポート (.aapal/.aapals)</li>
+        <li><I><MoreVertical size={14} /></I> メニューからキャラクター追加（複数文字入力で一括登録）、パレット管理、インポート/エクスポート (.aapal/.aapals)</li>
       </ul>
 
       <h2>ライブラリ (MLT)</h2>
@@ -331,6 +365,7 @@ function ManualJa() {
 
       <h2>合成結果</h2>
       <ul>
+        <li><I><Minus size={14} /></I> / 数値入力 / <I><Plus size={14} /></I> — プレビューフォントサイズ調整</li>
         <li><I><Copy size={14} /></I> コピー / <I><Download size={14} /></I> エクスポート</li>
         <li><I><PanelBottom size={14} /></I>/<I><PanelRight size={14} /></I> 位置切替 / <I><ExternalLink size={14} /></I> 別ウィンドウ</li>
       </ul>
@@ -418,15 +453,32 @@ function ManualEn() {
         <li><I><GripVertical size={14} /></I> Drag to reorder</li>
         <li><I><Lock size={14} /></I>/<I><Unlock size={14} /></I> Lock / <I><Eye size={14} /></I>/<I><EyeOff size={14} /></I> Visibility / <I><Trash2 size={14} /></I> Delete</li>
         <li><I><Merge size={14} /></I> Merge selected text layers (2+)</li>
+        <li><I><Minimize2 size={14} /></I> <strong>Compress Spaces</strong> — Replace consecutive spaces (16px+) with Em Space (U+2003) to reduce character count</li>
         <li><K>Ctrl</K>+click: multi-select, <K>Shift</K>+click: range select</li>
+      </ul>
+
+      <h2>Canvas Settings</h2>
+      <p><I><Scaling size={14} /></I> opens the canvas settings popover. Settings are saved per document.</p>
+      <ul>
+        <li><strong>Preset</strong> — Display resolution presets (mobile/tablet/desktop)</li>
+        <li><strong>Width/Height</strong> — Canvas size in usable area (px)</li>
+        <li><strong>Lock Canvas Size</strong> — Disables drag resize</li>
+        <li><strong>Font Size</strong> — Canvas text font size (px)</li>
+        <li><strong>Line Height</strong> — Line spacing (px). Locked: scales with font size. Unlocked: independent adjustment</li>
+      </ul>
+      <h3>Ruler / Guides</h3>
+      <ul>
+        <li><I><Ruler size={14} /></I> <strong>Ruler Unit</strong> — Toggle px/mm</li>
+        <li><strong>Custom Guides</strong> — Drag left/right from top ruler for vertical guides, drag up/down from left ruler for horizontal guides. Drag on ruler to move, drag out of safe area to remove</li>
       </ul>
 
       <h2>Opaque Paint</h2>
       <p>Mark whitespace as opaque so lower layers don't bleed through.</p>
       <ul>
-        <li><I><Paintbrush size={14} /></I> Paint mode — drag to mark (shown in yellow)</li>
-        <li><I><Eraser size={14} /></I> Erase mode — drag to remove markings</li>
-        <li><I><X size={14} /></I> or <K>Escape</K> to cancel mode</li>
+        <li><I><Paintbrush size={14} /></I> <strong>Paint mode</strong> — click to toggle on/off</li>
+        <li><strong>Drag</strong> — paint whitespace on active layer (shown in yellow)</li>
+        <li><K>Shift</K>+<strong>Drag</strong> — erase painted regions</li>
+        <li><K>Escape</K> — exit mode</li>
       </ul>
 
       <h2>Text Editing</h2>
@@ -441,7 +493,7 @@ function ManualEn() {
       <ul>
         <li><strong>Click character</strong> — Insert at cursor position in active layer</li>
         <li><strong>Right-click character</strong> — Delete</li>
-        <li><I><MoreVertical size={14} /></I> menu for adding characters, managing palettes, import/export (.aapal/.aapals)</li>
+        <li><I><MoreVertical size={14} /></I> menu for adding characters (multiple characters at once), managing palettes, import/export (.aapal/.aapals)</li>
       </ul>
 
       <h2>Library (MLT)</h2>
@@ -456,6 +508,7 @@ function ManualEn() {
 
       <h2>Composite Result</h2>
       <ul>
+        <li><I><Minus size={14} /></I> / number input / <I><Plus size={14} /></I> — Preview font size control (reflects canvas line height ratio)</li>
         <li><I><Copy size={14} /></I> Copy / <I><Download size={14} /></I> Export as .txt</li>
         <li><I><PanelBottom size={14} /></I>/<I><PanelRight size={14} /></I> Position / <I><ExternalLink size={14} /></I> Detach</li>
       </ul>

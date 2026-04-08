@@ -1,5 +1,6 @@
 .leftPanel {
   width: 260px;
+  min-width: 120px;
   background: var(--bg-secondary);
   border-right: 1px solid var(--border);
   display: flex;
@@ -45,6 +46,7 @@
   cursor: pointer;
   user-select: none;
   flex-shrink: 0;
+  overflow: hidden;
 }
 .sectionHeader:hover {
   background: var(--bg-tertiary);
@@ -54,9 +56,18 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  overflow: hidden;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.sectionTitle span {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .toggle {
+  flex-shrink: 0;
   transition: transform 0.15s;
 }
 .collapsed .toggle {
@@ -66,6 +77,7 @@
 .sectionActions {
   display: flex;
   gap: 0.35rem;
+  flex-shrink: 0;
 }
 
 .sectionBtn {

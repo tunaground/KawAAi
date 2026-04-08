@@ -3,7 +3,7 @@ import { FolderOpen, RefreshCw } from "lucide-react";
 import { useMltStore } from "../../stores/mltStore";
 import { useProjectStore } from "../../stores/projectStore";
 import { setStatus } from "../../stores/projectStore";
-import { getMeasureCtx, LAYER_PADDING, LINE_HEIGHT } from "../../lib/fontMetrics";
+import { getMeasureCtx, LAYER_PADDING } from "../../lib/fontMetrics";
 import { useConfigStore } from "../../stores/configStore";
 import { useI18n } from "../../i18n";
 import styles from "./MltSection.module.css";
@@ -116,13 +116,14 @@ export function MltSection() {
   };
 
   const insertEntry = (entry: { name: string; text: string }) => {
-    const ctx = getMeasureCtx();
+    const { fontSize, lineHeight } = useProjectStore.getState();
+    const ctx = getMeasureCtx(fontSize);
     const lines = entry.text.split("\n");
     let maxW = 0;
     lines.forEach((l) => { maxW = Math.max(maxW, ctx.measureText(l).width); });
     // 측정 오차 + 스냅 올림을 고려해서 여유를 줌
     const w = Math.ceil(maxW) + LAYER_PADDING * 2 + 2;
-    const h = lines.length * LINE_HEIGHT + LAYER_PADDING * 2 + 2;
+    const h = lines.length * lineHeight + LAYER_PADDING * 2 + 2;
     const offset = layerCount * 20;
     const layer = createLayer(entry.text, 20 + offset, 20 + offset, w, h);
     layer.name = entry.name || "MLT";
@@ -209,13 +210,15 @@ export function MltSection() {
           text={hoverPreview.text}
           x={hoverPreview.x}
           y={hoverPreview.y}
+          fontSize={useProjectStore.getState().fontSize}
+          lineHeight={useProjectStore.getState().lineHeight}
         />
       )}
     </div>
   );
 }
 
-function HoverPopup({ text, x, y }: { text: string; x: number; y: number }) {
+function HoverPopup({ text, x, y, fontSize, lineHeight }: { text: string; x: number; y: number; fontSize: number; lineHeight: number }) {
   const popupRef = useRef<HTMLDivElement>(null);
   const [top, setTop] = useState(y);
 
@@ -228,7 +231,7 @@ function HoverPopup({ text, x, y }: { text: string; x: number; y: number }) {
   }, [y, text]);
 
   return (
-    <div ref={popupRef} className={styles.hoverPreview} style={{ left: x, top }}>
+    <div ref={popupRef} className={styles.hoverPreview} style={{ left: x, top, fontSize: `${fontSize}px`, lineHeight: `${lineHeight}px` }}>
       {text}
     </div>
   );

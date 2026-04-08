@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, forwardRef } from "react";
 import {
   Copy, ChevronsRight, ChevronsLeft, ChevronsDown, ChevronsUp,
   Download, PanelBottom, PanelRight, ExternalLink, X,
+  Minus, Plus,
 } from "lucide-react";
 import { useProjectStore } from "../../stores/projectStore";
 import { useConfigStore } from "../../stores/configStore";
@@ -19,9 +20,13 @@ export const PreviewPanel = forwardRef<HTMLDivElement>(function PreviewPanel(_pr
     const doc = s.project.documents.find(d => d.id === s.project.activeDocId);
     return doc?.name ?? "export";
   });
+  const docFontSize = useProjectStore((s) => s.fontSize);
+  const docLineHeight = useProjectStore((s) => s.lineHeight);
   const t = useI18n((s) => s.t);
   const previewMode = useConfigStore((s) => s.config.previewMode);
   const setPreviewMode = useConfigStore((s) => s.setPreviewMode);
+  const previewFontSize = useConfigStore((s) => s.config.previewFontSize);
+  const updateConfig = useConfigStore((s) => s.updateConfig);
   const [compositeText, setCompositeText] = useState("");
   const [collapsed, setCollapsed] = useState(false);
   const compositeRef = useRef("");
@@ -31,7 +36,7 @@ export const PreviewPanel = forwardRef<HTMLDivElement>(function PreviewPanel(_pr
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      const lines = compositeLayers(layers);
+      const lines = compositeLayers(layers, docFontSize, docLineHeight);
       const text = lines.join("\n");
       setCompositeText(text);
       compositeRef.current = text;
@@ -41,7 +46,7 @@ export const PreviewPanel = forwardRef<HTMLDivElement>(function PreviewPanel(_pr
       }
     }, 200);
     return () => clearTimeout(timer);
-  }, [layers, isDetached]);
+  }, [layers, isDetached, docFontSize, docLineHeight]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(compositeText);
@@ -93,6 +98,17 @@ export const PreviewPanel = forwardRef<HTMLDivElement>(function PreviewPanel(_pr
 
   const togglePosition = () => {
     setPreviewMode(isBottom ? "right" : "bottom");
+  };
+
+  const fontSize = previewFontSize ?? 16;
+  const setFontSize = (size: number) => {
+    const clamped = Math.max(1, Math.min(48, size));
+    updateConfig({ previewFontSize: clamped });
+  };
+
+  const handleFontSizeInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseInt(e.target.value, 10);
+    if (!isNaN(val)) setFontSize(val);
   };
 
   const handleDetach = async () => {
@@ -162,6 +178,23 @@ export const PreviewPanel = forwardRef<HTMLDivElement>(function PreviewPanel(_pr
     >
       <div className={styles.header}>
         <span>{t("preview.title")}</span>
+        <div className={styles.fontSizeControl}>
+          <button className={styles.fontSizeBtn} onClick={() => setFontSize(fontSize - 1)} title="-1px">
+            <Minus size={10} />
+          </button>
+          <input
+            className={styles.fontSizeInput}
+            type="number"
+            value={fontSize}
+            onChange={handleFontSizeInput}
+            min={1}
+            max={48}
+          />
+          <span className={styles.fontSizeUnit}>px</span>
+          <button className={styles.fontSizeBtn} onClick={() => setFontSize(fontSize + 1)} title="+1px">
+            <Plus size={10} />
+          </button>
+        </div>
         <div className={styles.headerBtns}>
           <button className={styles.headerBtn} onClick={handleCopy} title={t("preview.copy")}>
             <Copy size={12} />
@@ -189,6 +222,7 @@ export const PreviewPanel = forwardRef<HTMLDivElement>(function PreviewPanel(_pr
           className={styles.textarea}
           value={compositeText}
           readOnly
+          style={{ fontSize: `${fontSize}px`, lineHeight: `${Math.round(fontSize * (docLineHeight / docFontSize))}px` }}
         />
       </div>
     </div>

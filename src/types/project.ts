@@ -26,6 +26,9 @@ export interface Document {
   activeLayerId: number | null;
   nextLayerId: number;
   viewSettings: ViewSettings;
+  fontSize: number;
+  lineHeight: number;
+  guides: { h: number[]; v: number[] };
 }
 
 export interface CanvasSize {
@@ -37,6 +40,8 @@ export interface ViewSettings {
   snapEnabled: boolean;
   gridVisible: boolean;
   charGridEnabled: boolean;
+  canvasLocked: boolean;
+  rulerUnit: "px" | "mm";
 }
 
 /** 공백 불투명 영역 — 캐릭터 포지션 기반 */

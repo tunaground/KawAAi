@@ -1,5 +1,6 @@
 .panel {
   width: 350px;
+  min-width: 260px;
   background: var(--bg-secondary);
   border-left: 1px solid var(--border);
   display: flex;
@@ -24,6 +25,9 @@
 .collapsed .header {
   justify-content: flex-end;
 }
+.collapsed .fontSizeControl {
+  display: none;
+}
 .collapsed .headerBtns .headerBtn {
   display: none;
 }
@@ -45,16 +49,77 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-secondary);
+  overflow: hidden;
+  white-space: nowrap;
   border-bottom: 1px solid var(--border);
   display: flex;
-  justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
+}
+
+.header > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.fontSizeControl {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.fontSizeBtn {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+}
+
+.fontSizeBtn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.fontSizeInput {
+  width: 32px;
+  height: 18px;
+  text-align: center;
+  font-size: 0.65rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-primary);
+  padding: 0 2px;
+  -moz-appearance: textfield;
+}
+
+.fontSizeInput::-webkit-outer-spin-button,
+.fontSizeInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.fontSizeUnit {
+  font-size: 0.6rem;
+  color: var(--text-secondary);
 }
 
 .headerBtns {
   display: flex;
   gap: 4px;
+  flex-shrink: 0;
 }
 
 .headerBtn {

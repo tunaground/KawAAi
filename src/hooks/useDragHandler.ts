@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { useProjectStore } from "../stores/projectStore";
-import { LINE_HEIGHT } from "../lib/fontMetrics";
 import { getSnapX } from "../lib/compositor";
 import { getMeasureCtx } from "../lib/fontMetrics";
 import { LAYER_PADDING } from "../lib/fontMetrics";
@@ -25,16 +24,17 @@ export function useDragHandler() {
 
       const dx = e.clientX - dragState.startX;
       const dy = e.clientY - dragState.startY;
+      const lh = store.lineHeight;
 
       if (dragState.type === "move") {
-        const snapX = getSnapX();
+        const snapX = getSnapX(store.fontSize);
         const snapEnabled = store.viewSettings.snapEnabled;
         let rawX = dragState.origX + dx;
         let rawY = dragState.origY + dy;
 
         if (snapEnabled && layer.type === "text") {
           rawX = Math.round(rawX / snapX) * snapX;
-          rawY = Math.round(rawY / LINE_HEIGHT) * LINE_HEIGHT;
+          rawY = Math.round(rawY / lh) * lh;
         }
         rawX = Math.max(0, rawX);
         rawY = Math.max(0, rawY);
@@ -64,7 +64,7 @@ export function useDragHandler() {
 
           // Content minimum (캐시: 드래그 중 텍스트 불변)
           if (!resizeMinCache || resizeMinCache.layerId !== layer.id) {
-            const ctx = getMeasureCtx();
+            const ctx = getMeasureCtx(store.fontSize);
             const lines = layer.text.split("\n");
             let maxLineW = 0;
             for (const line of lines) {
@@ -73,17 +73,17 @@ export function useDragHandler() {
             resizeMinCache = {
               layerId: layer.id,
               minW: Math.max(60, maxLineW + LAYER_PADDING * 2),
-              minH: Math.max(30, lines.length * LINE_HEIGHT + LAYER_PADDING * 2),
+              minH: Math.max(30, lines.length * lh + LAYER_PADDING * 2),
             };
           }
           const { minW, minH } = resizeMinCache;
           rawW = Math.max(minW, rawW);
           rawH = Math.max(minH, rawH);
 
-          const snapX = getSnapX();
+          const snapX = getSnapX(store.fontSize);
           if (store.viewSettings.snapEnabled) {
             rawW = Math.ceil(rawW / snapX) * snapX;
-            rawH = Math.ceil(rawH / LINE_HEIGHT) * LINE_HEIGHT;
+            rawH = Math.ceil(rawH / lh) * lh;
           }
 
           store.updateLayer(layer.id, { w: rawW, h: rawH });

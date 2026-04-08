@@ -30,6 +30,7 @@ export interface AppConfig {
   activePaletteIndex: number;
   mltFileIndex: number;
   mltSectionIndex: number;
+  previewFontSize: number;
 }
 
 export const DEFAULT_CONFIG: AppConfig = {
@@ -48,4 +49,5 @@ export const DEFAULT_CONFIG: AppConfig = {
   activePaletteIndex: 0,
   mltFileIndex: 0,
   mltSectionIndex: 0,
+  previewFontSize: 16,
 };

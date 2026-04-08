@@ -18,7 +18,7 @@ export function exportToMLT(project: ProjectFile): string {
       const doc = project.documents.find((d) => d.id === docId);
       if (!doc) continue;
 
-      const lines = compositeLayers(doc.layers);
+      const lines = compositeLayers(doc.layers, doc.fontSize ?? 16, doc.lineHeight ?? 18);
       const text = lines.join("\n");
       if (text.trim().length === 0) continue;
 

@@ -79,9 +79,16 @@ export function PaletteSection() {
     switch (action) {
       case "addChar": {
         const ch = await showInputModal(t("palette.charPrompt"));
-        if (ch && [...ch].length >= 1) {
-          addChar([...ch][0]);
-          setStatus(`"${[...ch][0]}" ${t("palette.charAdded")}`);
+        if (ch) {
+          const chars = [...ch];
+          if (chars.length >= 1) {
+            for (const c of chars) addChar(c);
+            setStatus(
+              chars.length === 1
+                ? `"${chars[0]}" ${t("palette.charAdded")}`
+                : `${chars.length}${t("palette.charsAdded")}`
+            );
+          }
         }
         break;
       }

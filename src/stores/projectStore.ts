@@ -12,7 +12,7 @@ interface UndoSnapshot {
   nextLayerId: number;
 }
 
-export type EditorMode = "normal" | "opaquePaint" | "opaqueErase";
+export type EditorMode = "normal" | "opaquePaint";
 
 const LAYER_COLORS = [
   "#2196f3", "#4caf50", "#ff9800", "#e91e63",
@@ -27,7 +27,10 @@ function createDefaultDoc(id: number, name = "새 문서"): Document {
     layers: [],
     activeLayerId: null,
     nextLayerId: 0,
-    viewSettings: { snapEnabled: true, gridVisible: true, charGridEnabled: false },
+    viewSettings: { snapEnabled: true, gridVisible: true, charGridEnabled: false, canvasLocked: false, rulerUnit: "px" },
+    fontSize: 16,
+    lineHeight: 18,
+    guides: { h: [], v: [] },
   };
 }
 
@@ -41,6 +44,14 @@ interface ProjectState {
   viewSettings: ViewSettings;
   canvasSize: { width: number; height: number };
   setCanvasSize: (size: { width: number; height: number }) => void;
+  fontSize: number;
+  lineHeight: number;
+  setFontSize: (size: number) => void;
+  setLineHeight: (height: number) => void;
+  guides: { h: number[]; v: number[] };
+  addGuide: (axis: "h" | "v", pos: number) => void;
+  removeGuide: (axis: "h" | "v", index: number) => void;
+  updateGuide: (axis: "h" | "v", index: number, pos: number) => void;
 
   // 네임스페이스 관리
   createNamespace: (name?: string) => Namespace;
@@ -124,9 +135,29 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   activeLayerId: null,
   selectedLayerIds: new Set(),
   nextLayerId: 0,
-  viewSettings: { snapEnabled: true, gridVisible: true, charGridEnabled: false },
+  viewSettings: { snapEnabled: true, gridVisible: true, charGridEnabled: false, canvasLocked: false, rulerUnit: "px" },
   canvasSize: { width: 600, height: 500 },
   setCanvasSize: (size) => set({ canvasSize: size }),
+  fontSize: 16,
+  lineHeight: 18,
+  setFontSize: (size) => set({ fontSize: Math.max(1, Math.min(48, size)) }),
+  setLineHeight: (height) => set({ lineHeight: Math.max(1, Math.min(96, height)) }),
+  guides: { h: [], v: [] },
+  addGuide: (axis, pos) => {
+    const g = { ...get().guides };
+    g[axis] = [...g[axis], pos];
+    set({ guides: g });
+  },
+  removeGuide: (axis, index) => {
+    const g = { ...get().guides };
+    g[axis] = g[axis].filter((_, i) => i !== index);
+    set({ guides: g });
+  },
+  updateGuide: (axis, index, pos) => {
+    const g = { ...get().guides };
+    g[axis] = g[axis].map((v, i) => (i === index ? pos : v));
+    set({ guides: g });
+  },
 
   // ── 네임스페이스 관리 ──
 
@@ -331,6 +362,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       activeLayerId: state.activeLayerId,
       nextLayerId: state.nextLayerId,
       viewSettings: state.viewSettings,
+      fontSize: state.fontSize,
+      lineHeight: state.lineHeight,
+      guides: state.guides,
     };
     const docs = state.project.documents.map((d) =>
       d.id === doc.id ? updated : d
@@ -351,6 +385,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       nextLayerId: doc.nextLayerId,
       viewSettings: doc.viewSettings,
       canvasSize: doc.canvas,
+      fontSize: doc.fontSize ?? 16,
+      lineHeight: doc.lineHeight ?? 18,
+      guides: doc.guides ?? { h: [], v: [] },
     });
   },
 

@@ -15,7 +15,7 @@
  */
 
 import type { Layer, OpaqueRange } from "../types/project";
-import { getMeasureCtx, measureString, LINE_HEIGHT, LAYER_PADDING } from "./fontMetrics";
+import { getMeasureCtx, measureString, DEFAULT_FONT_SIZE, DEFAULT_LINE_HEIGHT, LAYER_PADDING } from "./fontMetrics";
 
 /** 합성용 공백 문자 목록. initSpaceWidths()에서 폭 측정 후 넓은 순 정렬. */
 const SPACE_CHARS = [
@@ -30,23 +30,37 @@ const SPACE_CHARS = [
   { char: "\u3000", name: "Ideo" },
 ];
 
-let spaceWidths: { char: string; name: string; width: number }[] = [];
+/** fontSize별 space widths 캐시 */
+const spaceWidthsMap = new Map<number, { char: string; name: string; width: number }[]>();
+
+/** fontSize별 snapX 캐시 */
+const snapXMap = new Map<number, number>();
 
 /** 반각 스페이스 폭 = X축 스냅 그리드 단위 */
-let _snapX = 1;
-export function getSnapX(): number {
-  return _snapX;
+export function getSnapX(fontSize: number = DEFAULT_FONT_SIZE): number {
+  return snapXMap.get(fontSize) ?? 1;
 }
 
 /** 폰트 로딩 후 호출. 각 스페이스 문자의 실제 폭 측정 + SNAP_X 계산. */
-export function initSpaceWidths(): void {
-  const ctx = getMeasureCtx();
-  spaceWidths = SPACE_CHARS.map((s) => ({
+export function initSpaceWidths(fontSize: number = DEFAULT_FONT_SIZE): void {
+  const ctx = getMeasureCtx(fontSize);
+  const widths = SPACE_CHARS.map((s) => ({
     ...s,
     width: ctx.measureText(s.char).width,
-  })).sort((a, b) => b.width - a.width); // greedy fill용 넓은 순 정렬
+  })).sort((a, b) => b.width - a.width);
 
-  _snapX = ctx.measureText(" ").width;
+  spaceWidthsMap.set(fontSize, widths);
+  snapXMap.set(fontSize, ctx.measureText(" ").width);
+}
+
+/** fontSize에 대한 spaceWidths를 반환. 없으면 자동 초기화. */
+function getSpaceWidths(fontSize: number): { char: string; name: string; width: number }[] {
+  let sw = spaceWidthsMap.get(fontSize);
+  if (!sw) {
+    initSpaceWidths(fontSize);
+    sw = spaceWidthsMap.get(fontSize)!;
+  }
+  return sw;
 }
 
 /** 캐릭터 포지션이 불투명 범위에 속하는지 체크 */
@@ -55,7 +69,7 @@ function isInOpaqueRange(line: number, col: number, ranges: OpaqueRange[]): bool
 }
 
 /** 유니코드 공백 문자인지 판별. 합성 시 "투명"으로 취급. */
-function isTransparent(ch: string): boolean {
+export function isTransparent(ch: string): boolean {
   const code = ch.codePointAt(0) ?? 0;
   return (
     code === 0x0020 || code === 0x00a0 ||
@@ -68,8 +82,9 @@ function isTransparent(ch: string): boolean {
  * targetWidth 픽셀에 가장 가까운 유니코드 스페이스 조합을 반환.
  * greedy: 넓은 것부터 빼가며 채움. tolerance=0.5px.
  */
-function fillGap(targetWidth: number): { str: string; actualWidth: number } {
+function fillGap(targetWidth: number, fontSize: number = DEFAULT_FONT_SIZE): { str: string; actualWidth: number } {
   if (targetWidth < 0.1) return { str: "", actualWidth: 0 };
+  const spaceWidths = getSpaceWidths(fontSize);
   let remaining = targetWidth;
   let result = "";
   let actualWidth = 0;
@@ -93,36 +108,40 @@ interface Placement {
 }
 
 /** 전체 합성: 모든 visible 텍스트 레이어를 합쳐 최종 AA 텍스트 생성. */
-export function compositeLayers(layers: Layer[]): string[] {
+export function compositeLayers(
+  layers: Layer[],
+  fontSize: number = DEFAULT_FONT_SIZE,
+  lineHeight: number = DEFAULT_LINE_HEIGHT,
+): string[] {
   const visibleLayers = layers.filter((l) => l.visible && l.type === "text");
   if (visibleLayers.length === 0) return [];
 
   let maxPixelLine = 0;
   visibleLayers.forEach((layer) => {
     const lineCount = layer.text.split("\n").length;
-    const bottomPx = layer.y + LAYER_PADDING + lineCount * LINE_HEIGHT;
+    const bottomPx = layer.y + LAYER_PADDING + lineCount * lineHeight;
     maxPixelLine = Math.max(maxPixelLine, bottomPx);
   });
 
-  const totalLines = Math.ceil(maxPixelLine / LINE_HEIGHT);
+  const totalLines = Math.ceil(maxPixelLine / lineHeight);
   const resultLines: string[] = [];
 
   for (let lineIdx = 0; lineIdx < totalLines; lineIdx++) {
-    const lineTopPx = lineIdx * LINE_HEIGHT;
+    const lineTopPx = lineIdx * lineHeight;
     const placements: Placement[] = [];
 
     visibleLayers.forEach((layer, layerIdx) => {
       const layerLines = layer.text.split("\n");
       const layerLineIdx = Math.round(
-        (lineTopPx - layer.y - LAYER_PADDING) / LINE_HEIGHT
+        (lineTopPx - layer.y - LAYER_PADDING) / lineHeight
       );
       if (layerLineIdx < 0 || layerLineIdx >= layerLines.length) return;
 
-      const expectedPx = layer.y + LAYER_PADDING + layerLineIdx * LINE_HEIGHT;
-      if (Math.abs(expectedPx - lineTopPx) > LINE_HEIGHT / 2) return;
+      const expectedPx = layer.y + LAYER_PADDING + layerLineIdx * lineHeight;
+      if (Math.abs(expectedPx - lineTopPx) > lineHeight / 2) return;
 
       const lineText = layerLines[layerLineIdx];
-      const measured = measureString(lineText);
+      const measured = measureString(lineText, fontSize);
       const layerXOffset = layer.x + LAYER_PADDING;
 
       measured.forEach((m, charIndex) => {
@@ -181,7 +200,7 @@ export function compositeLayers(layers: Layer[]): string[] {
     for (const p of resolved) {
       const gap = p.x - currentX;
       if (gap > 0.5) {
-        output += fillGap(gap).str;
+        output += fillGap(gap, fontSize).str;
       }
       output += p.char;
       currentX = p.x + p.width;
@@ -202,36 +221,38 @@ export function compositeLayers(layers: Layer[]): string[] {
 export function compositeLayersSubset(
   subset: Layer[],
   originX = 0,
-  originY = 0
+  originY = 0,
+  fontSize: number = DEFAULT_FONT_SIZE,
+  lineHeight: number = DEFAULT_LINE_HEIGHT,
 ): string[] {
   let maxPixelLine = 0;
   subset.forEach((layer) => {
     const lineCount = layer.text.split("\n").length;
     const bottomPx =
-      layer.y - originY + LAYER_PADDING + lineCount * LINE_HEIGHT;
+      layer.y - originY + LAYER_PADDING + lineCount * lineHeight;
     maxPixelLine = Math.max(maxPixelLine, bottomPx);
   });
 
-  const totalLines = Math.ceil(maxPixelLine / LINE_HEIGHT);
+  const totalLines = Math.ceil(maxPixelLine / lineHeight);
   const resultLines: string[] = [];
 
   for (let lineIdx = 0; lineIdx < totalLines; lineIdx++) {
-    const lineTopPx = lineIdx * LINE_HEIGHT;
+    const lineTopPx = lineIdx * lineHeight;
     const placements: Placement[] = [];
 
     subset.forEach((layer, layerIdx) => {
       const layerLines = layer.text.split("\n");
       const relY = layer.y - originY;
       const layerLineIdx = Math.round(
-        (lineTopPx - relY - LAYER_PADDING) / LINE_HEIGHT
+        (lineTopPx - relY - LAYER_PADDING) / lineHeight
       );
       if (layerLineIdx < 0 || layerLineIdx >= layerLines.length) return;
 
-      const expectedPx = relY + LAYER_PADDING + layerLineIdx * LINE_HEIGHT;
-      if (Math.abs(expectedPx - lineTopPx) > LINE_HEIGHT / 2) return;
+      const expectedPx = relY + LAYER_PADDING + layerLineIdx * lineHeight;
+      if (Math.abs(expectedPx - lineTopPx) > lineHeight / 2) return;
 
       const lineText = layerLines[layerLineIdx];
-      const measured = measureString(lineText);
+      const measured = measureString(lineText, fontSize);
       const layerXOffset = layer.x - originX + LAYER_PADDING;
 
       measured.forEach((m, charIndex) => {
@@ -286,7 +307,7 @@ export function compositeLayersSubset(
     let currentX = 0;
     for (const p of resolved) {
       const gap = p.x - currentX;
-      if (gap > 0.5) output += fillGap(gap).str;
+      if (gap > 0.5) output += fillGap(gap, fontSize).str;
       output += p.char;
       currentX = p.x + p.width;
     }

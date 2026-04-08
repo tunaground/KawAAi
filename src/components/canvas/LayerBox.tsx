@@ -2,7 +2,7 @@ import { memo, useRef, useCallback, useState, useMemo } from "react";
 import { useProjectStore } from "../../stores/projectStore";
 import { saveUndoSnapshot } from "../../stores/projectStore";
 import { getDotString } from "../../lib/dotInput";
-import { measureString, LAYER_PADDING, LINE_HEIGHT } from "../../lib/fontMetrics";
+import { measureString, LAYER_PADDING } from "../../lib/fontMetrics";
 import type { Layer, OpaqueRange } from "../../types/project";
 import styles from "./LayerBox.module.css";
 
@@ -21,10 +21,12 @@ export const LayerBox = memo(function LayerBox({ layer, zIndex }: LayerBoxProps)
   const setDragState = useProjectStore((s) => s.setDragState);
   const setIsDraggingLayer = useProjectStore((s) => s.setIsDraggingLayer);
   const editorMode = useProjectStore((s) => s.editorMode);
+  const fontSize = useProjectStore((s) => s.fontSize);
+  const lineHeight = useProjectStore((s) => s.lineHeight);
 
   const isActive = layer.id === activeLayerId;
   const isSelected = selectedLayerIds.has(layer.id);
-  const isOpaqueMode = editorMode === "opaquePaint" || editorMode === "opaqueErase";
+  const isOpaqueMode = editorMode === "opaquePaint";
 
   // 도트 입력 상태
   const dotRef = useRef({ index: 0, startPos: -1, currentLen: 0 });
@@ -71,8 +73,8 @@ export const LayerBox = memo(function LayerBox({ layer, zIndex }: LayerBoxProps)
       const x2 = Math.max(startX, ev.clientX) - rect.left - LAYER_PADDING;
       const y2 = Math.max(startY, ev.clientY) - rect.top - LAYER_PADDING;
 
-      const startLine = Math.max(0, Math.floor(y1 / LINE_HEIGHT));
-      const endLine = Math.ceil(y2 / LINE_HEIGHT);
+      const startLine = Math.max(0, Math.floor(y1 / lineHeight));
+      const endLine = Math.ceil(y2 / lineHeight);
 
       // 최신 layer 상태 가져오기
       const currentLayer = useProjectStore.getState().layers.find(l => l.id === layer.id);
@@ -81,7 +83,7 @@ export const LayerBox = memo(function LayerBox({ layer, zIndex }: LayerBoxProps)
 
       const newRanges: OpaqueRange[] = [];
       for (let ln = startLine; ln < endLine && ln < lines.length; ln++) {
-        const measured = measureString(lines[ln]);
+        const measured = measureString(lines[ln], fontSize);
         let sc = -1;
         let ec = -1;
         measured.forEach((m, col) => {
@@ -98,13 +100,14 @@ export const LayerBox = memo(function LayerBox({ layer, zIndex }: LayerBoxProps)
       // undo
       saveUndoSnapshot();
 
-      const mode = useProjectStore.getState().editorMode;
-      if (mode === "opaquePaint") {
-        const merged = mergeOpaqueRanges([...currentLayer.opaqueRanges, ...newRanges]);
-        updateLayer(layer.id, { opaqueRanges: merged });
-      } else {
+      if (ev.shiftKey) {
+        // Shift+드래그 → 제거
         const erased = subtractOpaqueRanges(currentLayer.opaqueRanges, newRanges);
         updateLayer(layer.id, { opaqueRanges: erased });
+      } else {
+        // 일반 드래그 → 채색
+        const merged = mergeOpaqueRanges([...currentLayer.opaqueRanges, ...newRanges]);
+        updateLayer(layer.id, { opaqueRanges: merged });
       }
     };
 
@@ -143,9 +146,11 @@ export const LayerBox = memo(function LayerBox({ layer, zIndex }: LayerBoxProps)
         saveUndoSnapshot();
         undoSavedRef.current = true;
       }
-      updateLayer(layer.id, { text: e.target.value });
+      const newText = e.target.value;
+      const adjusted = adjustOpaqueRanges(layer.text, newText, layer.opaqueRanges);
+      updateLayer(layer.id, { text: newText, opaqueRanges: adjusted });
     },
-    [layer.id, updateLayer]
+    [layer.id, layer.text, layer.opaqueRanges, updateLayer]
   );
 
   const handleKeyDown = useCallback(
@@ -185,12 +190,13 @@ export const LayerBox = memo(function LayerBox({ layer, zIndex }: LayerBoxProps)
         ta.value = newValue;
         ta.selectionStart = ta.selectionEnd = dot.startPos + dot.currentLen;
         dot.index++;
-        updateLayer(layer.id, { text: newValue });
+        const adjusted = adjustOpaqueRanges(layer.text, newValue, layer.opaqueRanges);
+        updateLayer(layer.id, { text: newValue, opaqueRanges: adjusted });
       } else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
         dotRef.current = { index: 0, startPos: -1, currentLen: 0 };
       }
     },
-    [layer.id, updateLayer]
+    [layer.id, layer.text, layer.opaqueRanges, updateLayer]
   );
 
   const className = [
@@ -278,7 +284,7 @@ export const LayerBox = memo(function LayerBox({ layer, zIndex }: LayerBoxProps)
         <div className={styles.editArea}>
           <div
             className={styles.display}
-            style={{ color: layer.textColor }}
+            style={{ color: layer.textColor, fontSize: `${fontSize}px`, lineHeight: `${lineHeight}px` }}
           >
             {displayContent}
           </div>
@@ -292,7 +298,7 @@ export const LayerBox = memo(function LayerBox({ layer, zIndex }: LayerBoxProps)
               onFocus={() => { undoSavedRef.current = false; setActiveLayer(layer.id); }}
               onBlur={() => { undoSavedRef.current = false; }}
               spellCheck={false}
-              style={{ caretColor: layer.textColor }}
+              style={{ caretColor: layer.textColor, fontSize: `${fontSize}px`, lineHeight: `${lineHeight}px` }}
               readOnly={layer.locked}
             />
           )}
@@ -375,4 +381,101 @@ function subtractOpaqueRanges(existing: OpaqueRange[], toRemove: OpaqueRange[]):
     result = next;
   }
   return result;
+}
+
+/**
+ * 텍스트 변경 시 opaqueRanges의 col 인덱스를 조정.
+ * 줄 단위로 이전/이후 글자 수 차이를 계산하여 shift.
+ * 줄 수가 변하면 삭제/추가된 줄의 range도 처리.
+ */
+function adjustOpaqueRanges(
+  oldText: string,
+  newText: string,
+  ranges: OpaqueRange[],
+): OpaqueRange[] {
+  if (ranges.length === 0) return ranges;
+
+  const oldLines = oldText.length === 0 ? [""] : oldText.split("\n");
+  const newLines = newText.length === 0 ? [""] : newText.split("\n");
+  const oldLineCount = oldLines.length;
+  const newLineCount = newLines.length;
+
+  // 줄 수가 같으면 각 줄의 글자 수 차이만 적용
+  if (oldLineCount === newLineCount) {
+    return ranges.map((r) => {
+      const oldChars = [...oldLines[r.line]];
+      const newChars = [...newLines[r.line]];
+      const delta = newChars.length - oldChars.length;
+      if (delta === 0) return r;
+
+      // 앞쪽에서 처음 달라지는 지점 찾기
+      let changePos = 0;
+      while (changePos < oldChars.length && changePos < newChars.length && oldChars[changePos] === newChars[changePos]) {
+        changePos++;
+      }
+
+      let startCol = r.startCol;
+      let endCol = r.endCol;
+
+      if (delta > 0) {
+        // 삽입
+        if (changePos <= startCol) {
+          startCol += delta;
+          endCol += delta;
+        } else if (changePos < endCol) {
+          endCol += delta;
+        }
+      } else {
+        // 삭제
+        const delStart = changePos;
+        const delEnd = changePos - delta;
+        if (delEnd <= startCol) {
+          startCol += delta;
+          endCol += delta;
+        } else if (delStart >= endCol) {
+          // 삭제가 range 뒤 → 변화 없음
+        } else {
+          // 삭제가 range와 겹침
+          if (delStart <= startCol && delEnd >= endCol) {
+            return null; // range 전체 삭제
+          }
+          if (delStart <= startCol) {
+            startCol = delStart;
+            endCol += delta;
+          } else {
+            endCol = Math.max(startCol, endCol + delta);
+          }
+        }
+      }
+
+      if (startCol >= endCol) return null;
+      return { line: r.line, startCol, endCol };
+    }).filter((r): r is OpaqueRange => r !== null);
+  }
+
+  // 줄 수가 달라졌으면 — 줄 번호 shift
+  let prefixLines = 0;
+  while (prefixLines < oldLineCount && prefixLines < newLineCount && oldLines[prefixLines] === newLines[prefixLines]) {
+    prefixLines++;
+  }
+  let suffixLines = 0;
+  while (
+    suffixLines < oldLineCount - prefixLines &&
+    suffixLines < newLineCount - prefixLines &&
+    oldLines[oldLineCount - 1 - suffixLines] === newLines[newLineCount - 1 - suffixLines]
+  ) {
+    suffixLines++;
+  }
+
+  const lineDelta = newLineCount - oldLineCount;
+  const changeStartLine = prefixLines;
+  const changeEndLineOld = oldLineCount - suffixLines;
+
+  return ranges.map((r) => {
+    if (r.line < changeStartLine) return r;
+    if (r.line >= changeEndLineOld) {
+      return { ...r, line: r.line + lineDelta };
+    }
+    return null; // 변경 영역 안의 줄 → 삭제
+  }).filter((r): r is OpaqueRange => r !== null);
 }

@@ -168,7 +168,7 @@ function pasteLayers() {
   saveUndoSnapshot();
 
   const state = useProjectStore.getState();
-  const offset = 18; // LINE_HEIGHT
+  const offset = useProjectStore.getState().lineHeight;
   const LAYER_COLORS = ["#2196f3", "#4caf50", "#ff9800", "#e91e63", "#9c27b0", "#00bcd4", "#ff5722", "#8bc34a"];
   const newLayers: typeof state.layers = [];
   const newSelected = new Set<number>();

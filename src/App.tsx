@@ -168,13 +168,7 @@ function App() {
       if (!result) return;
       await saveRecentProject(result.path);
       const data = result.data;
-      // v1 → v2 마이그레이션
-      if (!data.namespaces || data.namespaces.length === 0) {
-        data.namespaces = [{ id: 0, name: "Default", docIds: data.documents.map((d: any) => d.id) }];
-        data.activeNamespaceId = 0;
-        data.nextNamespaceId = 1;
-        data.version = 2;
-      }
+      migrateProjectData(data);
       useProjectStore.setState({
         project: data,
         layers: [],
@@ -195,6 +189,7 @@ function App() {
         if (!file) return;
         const text = await file.text();
         const data = JSON.parse(text);
+        migrateProjectData(data);
         setProjectPath(null);
         useProjectStore.setState({
           project: data,
@@ -457,6 +452,27 @@ async function getLastProjectPath(): Promise<string | null> {
   }
 }
 
+/** 프로젝트 데이터 마이그레이션 */
+function migrateProjectData(data: any) {
+  // v1 → v2: 네임스페이스 추가
+  if (!data.namespaces || data.namespaces.length === 0) {
+    data.namespaces = [{ id: 0, name: "Default", docIds: data.documents.map((d: any) => d.id) }];
+    data.activeNamespaceId = 0;
+    data.nextNamespaceId = 1;
+    data.version = 2;
+  }
+  // v2 → v2+: 문서별 fontSize/lineHeight/canvasLocked 추가
+  for (const doc of data.documents) {
+    if (doc.fontSize == null) doc.fontSize = 16;
+    if (doc.lineHeight == null) doc.lineHeight = 18;
+    if (doc.viewSettings) {
+      if (doc.viewSettings.canvasLocked == null) doc.viewSettings.canvasLocked = false;
+      if (doc.viewSettings.rulerUnit == null) doc.viewSettings.rulerUnit = "px";
+    }
+    if (doc.guides == null) doc.guides = { h: [], v: [] };
+  }
+}
+
 /** 최근 프로젝트 복원 시도 */
 async function tryRestoreLastProject(): Promise<boolean> {
   const path = await getLastProjectPath();
@@ -467,17 +483,7 @@ async function tryRestoreLastProject(): Promise<boolean> {
     const data = await invoke<ProjectFile>("load_project", { path });
     if (!data || !data.documents || data.documents.length === 0) return false;
 
-    // v1 → v2 마이그레이션: 네임스페이스 추가
-    if (!data.namespaces || data.namespaces.length === 0) {
-      data.namespaces = [{
-        id: 0,
-        name: "Default",
-        docIds: data.documents.map((d) => d.id),
-      }];
-      data.activeNamespaceId = 0;
-      data.nextNamespaceId = 1;
-      data.version = 2;
-    }
+    migrateProjectData(data);
 
     setProjectPath(path);
     useProjectStore.setState({
