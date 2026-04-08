@@ -91,8 +91,7 @@ export function Canvas() {
 
     const isMm = rulerUnit === "mm";
     const mmPx = 96 / 25.4;
-    const minor = isMm ? mmPx : 10;
-    const major = isMm ? mmPx * 10 : 100;
+    const minor = isMm ? mmPx : 10;       // tick 간격 (px)
 
     // Top
     const rtop = rulerTopRef.current!;
@@ -109,7 +108,7 @@ export function Canvas() {
     for (let i = 0; i * minor <= sw; i++) {
       const x = i * minor;
       const px = m + x;
-      const isMajorTick = i > 0 && Math.abs(x % major) < 0.5;
+      const isMajorTick = i > 0 && (isMm ? i % 10 === 0 : i % 10 === 0);
       const tickH = isMajorTick ? m * 0.45 : m * 0.2;
       ct.strokeStyle = isMajorTick ? "rgba(0,0,0,0.25)" : "rgba(0,0,0,0.12)";
       ct.lineWidth = 0.5;
@@ -118,7 +117,7 @@ export function Canvas() {
       ct.lineTo(px, m - tickH);
       ct.stroke();
       if (isMajorTick) {
-        const label = isMm ? String(Math.round(x / mmPx)) : String(Math.round(x));
+        const label = isMm ? String(i) + "mm" : String(Math.round(x)) + "px";
         ct.fillText(label, px, m - tickH - 2);
       }
     }
@@ -139,7 +138,7 @@ export function Canvas() {
     for (let i = 0; i * minor <= sh; i++) {
       const y = i * minor;
       const py = m + y;
-      const isMajorTick = i > 0 && Math.abs(y % major) < 0.5;
+      const isMajorTick = i > 0 && (isMm ? i % 10 === 0 : i % 10 === 0);
       const tickW = isMajorTick ? m * 0.45 : m * 0.2;
       cl.strokeStyle = isMajorTick ? "rgba(0,0,0,0.25)" : "rgba(0,0,0,0.12)";
       cl.lineWidth = 0.5;
@@ -148,7 +147,7 @@ export function Canvas() {
       cl.lineTo(m - tickW, py);
       cl.stroke();
       if (isMajorTick) {
-        const label = isMm ? String(Math.round(y / mmPx)) : String(Math.round(y));
+        const label = isMm ? String(i) : String(Math.round(y));
         cl.fillText(label, m - tickW - 2, py);
       }
     }
