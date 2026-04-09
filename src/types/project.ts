@@ -76,6 +76,9 @@ export interface Layer {
   /** type='image' 전용 — data URL */
   imageSrc: string;
 
+  /** type='image' 전용 — 채도 (0~2, 기본 1) */
+  saturation: number;
+
   /** 공백 불투명 영역 — 채색된 부분의 공백은 합성 시 하위 레이어를 가림 */
   opaqueRanges: OpaqueRange[];
 }

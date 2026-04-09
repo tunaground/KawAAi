@@ -72,6 +72,7 @@ export function mergeSelectedLayers() {
     textColor: "#000000",
     opacity: 1,
     imageSrc: "",
+    saturation: 1,
     opaqueRanges: [],
   };
 

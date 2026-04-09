@@ -1,8 +1,9 @@
 import { memo, useState, useRef } from "react";
-import { GripVertical, Eye, EyeOff, Lock, Unlock, Trash2 } from "lucide-react";
+import { GripVertical, Eye, EyeOff, Lock, Unlock, Trash2, SlidersHorizontal, Image } from "lucide-react";
 import { useProjectStore } from "../../stores/projectStore";
 import { saveUndoSnapshot } from "../../stores/projectStore";
 import { useI18n } from "../../i18n";
+import { LayerPropsPopover } from "./LayerPropsPopover";
 import type { Layer } from "../../types/project";
 import styles from "./LayerItem.module.css";
 
@@ -21,7 +22,9 @@ export const LayerItem = memo(function LayerItem({ layer }: LayerItemProps) {
   const isActive = layer.id === activeLayerId;
   const isSelected = selectedLayerIds.has(layer.id) && !isActive;
   const [editing, setEditing] = useState(false);
+  const [propsOpen, setPropsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const propsBtnRef = useRef<HTMLButtonElement>(null);
 
   const handleClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest("[data-action]")) return;
@@ -61,15 +64,19 @@ export const LayerItem = memo(function LayerItem({ layer }: LayerItemProps) {
         <GripVertical size={12} />
       </div>
 
-      <input
-        type="color"
-        className={styles.colorSwatch}
-        value={layer.textColor}
-        onFocus={() => saveUndoSnapshot()}
-        onChange={(e) => updateLayer(layer.id, { textColor: e.target.value })}
-        onMouseDown={(e) => e.stopPropagation()}
-        title={t("layer.textColor")}
-      />
+      {layer.type === "image" ? (
+        <div className={styles.imageSwatch}><Image size={14} /></div>
+      ) : (
+        <input
+          type="color"
+          className={styles.colorSwatch}
+          value={layer.textColor}
+          onFocus={() => saveUndoSnapshot()}
+          onChange={(e) => updateLayer(layer.id, { textColor: e.target.value })}
+          onMouseDown={(e) => e.stopPropagation()}
+          title={t("layer.textColor")}
+        />
+      )}
 
       {editing ? (
         <input
@@ -86,6 +93,19 @@ export const LayerItem = memo(function LayerItem({ layer }: LayerItemProps) {
       ) : (
         <span className={styles.name}>{layer.name}</span>
       )}
+
+      <button
+        ref={propsBtnRef}
+        className={styles.btn}
+        data-action="props"
+        onMouseDown={(e) => {
+          e.stopPropagation();
+          setPropsOpen(!propsOpen);
+        }}
+        title={t("layer.properties")}
+      >
+        <SlidersHorizontal size={11} />
+      </button>
 
       <button
         className={styles.btn}
@@ -122,6 +142,14 @@ export const LayerItem = memo(function LayerItem({ layer }: LayerItemProps) {
       >
         <Trash2 size={11} />
       </button>
+
+      {propsOpen && propsBtnRef.current && (
+        <LayerPropsPopover
+          layer={layer}
+          anchorRect={propsBtnRef.current.getBoundingClientRect()}
+          onClose={() => setPropsOpen(false)}
+        />
+      )}
     </div>
   );
 });

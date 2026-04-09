@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from "react";
 import { useProjectStore, setStatus, saveUndoSnapshot } from "../stores/projectStore";
+import { usePaletteStore } from "../stores/paletteStore";
 import { t } from "../i18n";
 import type { LayerClipboard } from "../types/editor";
 
@@ -40,13 +41,32 @@ export function useKeyboardShortcuts() {
       return;
     }
 
-    // Escape: 채색모드 해제 → 선택 해제
+    // Escape: 박스활성 해제 → 팔레트선택 해제 → 블록선택 해제 → 모드 해제 → 레이어 선택 해제
     if (e.key === "Escape") {
-      const mode = useProjectStore.getState().editorMode;
-      if (mode !== "normal") {
-        useProjectStore.getState().setEditorMode("normal");
+      const store = useProjectStore.getState();
+      const palStore = usePaletteStore.getState();
+      if (store.activeBoxPreset || store.activeStampPreset || palStore.selectedIndices.size > 0) {
+        store.setActiveBoxPreset(null);
+        store.setActiveStampPreset(null);
+        palStore.clearSelection();
+      } else if (store.editorMode === "blockSelect" && store.blockSelection.length > 0) {
+        store.clearBlockSelection();
+      } else if (store.editorMode !== "normal") {
+        store.setEditorMode("normal");
       } else {
-        useProjectStore.getState().setActiveLayer(null);
+        store.setActiveLayer(null);
+      }
+      return;
+    }
+
+    // Delete: 선택된 레이어 삭제 (textarea 편집 중이 아닐 때)
+    if ((e.key === "Delete" || e.key === "Backspace") && !inTextarea) {
+      const store = useProjectStore.getState();
+      const ids = store.selectedLayerIds;
+      if (ids.size > 0) {
+        e.preventDefault();
+        saveUndoSnapshot();
+        for (const id of [...ids]) store.removeLayer(id);
       }
       return;
     }
@@ -155,6 +175,7 @@ function copyLayers() {
       textColor: l.textColor,
       opacity: l.opacity,
       imageSrc: l.imageSrc,
+      saturation: l.saturation,
       opaqueRanges: [...l.opaqueRanges],
     }));
   useProjectStore.getState().setLayerClipboard(clipboard);
@@ -191,6 +212,7 @@ function pasteLayers() {
       textColor: lc.textColor,
       opacity: lc.opacity,
       imageSrc: lc.imageSrc,
+      saturation: lc.saturation,
       opaqueRanges: lc.opaqueRanges.map((r) => ({ ...r })),
     });
     newSelected.add(id);

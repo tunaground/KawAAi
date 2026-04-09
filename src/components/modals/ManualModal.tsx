@@ -5,6 +5,8 @@ import {
   Copy, Download, PanelBottom, PanelRight, ExternalLink,
   ChevronsRight, ChevronsLeft, MoreVertical, RefreshCw,
   BookOpen, FileDown, FilePlus, Scaling, Ruler, Minus, Minimize2,
+  BoxSelect, Square, Brush, PaintBucket, SlidersHorizontal,
+  PaintbrushVertical, Stamp,
 } from "lucide-react";
 import { useI18n } from "../../i18n";
 import styles from "./ManualModal.module.css";
@@ -161,17 +163,27 @@ function ManualKo() {
 
       <h2>텍스트 편집</h2>
       <ul>
-        <li><strong>스페이스바</strong> — 도트 문자 순환 입력. 누를 때마다 Hair Space → Thin Space → ... 점점 넓은 공백으로 교체. 9단계 1사이클.</li>
-        <li><strong>오버플로우 방지</strong> — 레이어 크기를 넘는 텍스트 입력 시 자동 롤백</li>
+        <li><K>Shift+Space</K> — 도트 문자 순환 입력. 누를 때마다 Hair Space → Thin Space → ... 점점 넓은 공백으로 교체. 16단계 1사이클.</li>
+        <li><strong>Space</strong> — 일반 공백 삽입</li>
       </ul>
 
-      <h2>공백 채색</h2>
-      <p>AA에서 박스 안쪽 공백이 하위 레이어에 침범당하지 않도록 특정 영역의 공백을 불투명으로 마킹합니다.</p>
+      <h2>블록 편집</h2>
+      <p>활성 텍스트 레이어 내에서 문자 단위로 영역을 선택하고 액션을 적용합니다.</p>
+      <h3>하단 툴바</h3>
       <ul>
-        <li><I><Paintbrush size={14} /></I> <strong>채색 모드</strong> — 버튼을 눌러 활성화, 다시 누르면 해제</li>
-        <li><strong>드래그</strong> — 활성 레이어 위를 드래그하여 공백 채색 (노란색 표시)</li>
-        <li><K>Shift</K>+<strong>드래그</strong> — 채색된 영역 제거</li>
-        <li><K>Escape</K> — 모드 해제</li>
+        <li><I><BoxSelect size={14} /></I> <strong>블록 편집 활성화</strong> — 토글 버튼</li>
+        <li><I><Square size={14} /></I> <strong>사각 선택</strong> — 드래그로 사각 영역 선택</li>
+        <li><I><Brush size={14} /></I> <strong>브러시 선택</strong> — 클릭+드래그로 개별 문자 선택. 호버 시 가이드 표시</li>
+        <li><I><Paintbrush size={14} /></I> <strong>채색 적용</strong> — 선택 영역을 공백 불투명으로 마킹</li>
+        <li><I><PaintbrushVertical size={14} /></I> <strong>채색 제거</strong> — 선택 영역의 불투명 마킹 해제</li>
+        <li><I><PaintBucket size={14} /></I> <strong>박스 자동 채색</strong> — 박스 생성 시 자동으로 불투명 처리</li>
+      </ul>
+      <h3>선택 수정자</h3>
+      <ul>
+        <li><strong>드래그</strong> — 새 선택 (기존 교체)</li>
+        <li><K>Shift</K>+드래그 — 기존 선택에 추가</li>
+        <li><K>Ctrl</K>+<K>Shift</K>+드래그 — 기존 선택에서 제거</li>
+        <li><K>Escape</K> — 선택 해제 → 모드 해제</li>
       </ul>
 
       <h2>레이어 캔버스 (간이 편집)</h2>
@@ -183,19 +195,43 @@ function ManualKo() {
         <li><strong>레이어로 삽입</strong> — 작성한 텍스트를 현재 문서에 새 레이어로 추가</li>
       </ul>
 
-      <h2>팔레트</h2>
-      <p>자주 사용하는 AA 문자를 팔레트에 등록하여 빠르게 삽입합니다.</p>
+      <h2>레이어 속성</h2>
       <ul>
-        <li><strong>드롭다운</strong>으로 팔레트 전환</li>
-        <li><strong>문자 클릭</strong> — 활성 레이어의 커서 위치에 삽입</li>
-        <li><strong>문자 우클릭</strong> — 삭제</li>
-        <li><I><MoreVertical size={14} /></I> <strong>메뉴</strong>:
+        <li><I><SlidersHorizontal size={14} /></I> — 레이어 아이템의 속성 버튼 클릭 시 팝오버 표시</li>
+        <li><strong>텍스트 레이어</strong> — 투명도 조절</li>
+        <li><strong>이미지 레이어</strong> — 투명도 + 채도 조절</li>
+      </ul>
+
+      <h2>팔레트</h2>
+      <p>자주 사용하는 AA 문자와 박스 프리셋을 팔레트에 등록합니다. 캐릭터 팔레트와 박스 팔레트를 드롭다운에서 전환합니다.</p>
+      <h3>캐릭터 팔레트</h3>
+      <ul>
+        <li><strong>클릭</strong> — 선택 (<K>Ctrl</K>/&zwj;<K>Shift</K>+클릭으로 다중 선택)</li>
+        <li><strong>더블클릭</strong> — 활성 레이어의 커서 위치에 삽입</li>
+      </ul>
+      <h3>박스 팔레트</h3>
+      <ul>
+        <li><strong>클릭</strong> — 박스 활성화 (캔버스 드래그 생성 모드 진입)</li>
+        <li><K>Ctrl</K>/<K>Shift</K>+클릭 — 다중 선택 (활성화 해제)</li>
+        <li>활성 상태에서 캔버스 드래그 → 박스 텍스트 레이어 생성</li>
+        <li>드래그 중 <K>Escape</K> — 생성 취소 (박스 선택 유지)</li>
+      </ul>
+      <h3>메뉴</h3>
+      <ul>
+        <li><I><MoreVertical size={14} /></I> 메뉴:
           <ul>
-            <li>캐릭터 추가 (여러 문자 입력 시 개별 등록), 팔레트 추가, 팔레트 삭제</li>
-            <li>팔레트 임포트/익스포트 (.aapal)</li>
-            <li>팔레트세트 임포트/익스포트 (.aapals)</li>
+            <li><strong>캐릭터 팔레트</strong>: 캐릭터 추가, 선택 삭제</li>
+            <li><strong>박스 팔레트</strong>: 박스 추가/편집, 선택 삭제</li>
+            <li><strong>스탬프 팔레트</strong>: 여러 줄 AA 텍스트를 저장하여 캔버스 클릭으로 삽입</li>
+            <li>캐릭터/박스/스탬프 팔레트 추가, 팔레트 삭제</li>
+            <li>팔레트 임포트/익스포트 (.aapal), 세트 임포트/익스포트 (.aapals)</li>
           </ul>
         </li>
+      </ul>
+      <h3>스탬프</h3>
+      <ul>
+        <li><strong>클릭</strong> — 스탬프 활성화 → 캔버스 클릭으로 레이어 삽입. 호버 시 미리보기 표시</li>
+        <li><I><Stamp size={14} /></I> <strong>문서를 스탬프로 저장</strong> — 상단 툴바 저장 버튼 옆. 스탬프 팔레트 선택 시 활성화. 현재 문서 합성 결과를 스탬프로 저장</li>
       </ul>
 
       <h2>라이브러리 (MLT)</h2>
@@ -245,8 +281,9 @@ function ManualKo() {
           <tr><td><K>Ctrl+Shift+Z</K> / <K>Ctrl+Y</K></td><td>다시 실행</td></tr>
           <tr><td><K>Ctrl+C</K></td><td>레이어 복사 (탭 포커스: 문서 복사)</td></tr>
           <tr><td><K>Ctrl+V</K></td><td>레이어 붙여넣기 (탭 포커스: 문서 붙여넣기)</td></tr>
-          <tr><td><K>Escape</K></td><td>모드 해제 / 선택 해제</td></tr>
-          <tr><td><K>Space</K></td><td>도트 문자 순환 입력</td></tr>
+          <tr><td><K>Delete</K> / <K>Backspace</K></td><td>선택된 레이어 삭제</td></tr>
+          <tr><td><K>Escape</K></td><td>박스/팔레트 해제 → 블록 선택 해제 → 모드 해제 → 레이어 선택 해제</td></tr>
+          <tr><td><K>Shift+Space</K></td><td>도트 문자 순환 입력</td></tr>
         </tbody>
       </table>
     </>
@@ -330,28 +367,40 @@ function ManualJa() {
         <li><strong>カスタムガイド線</strong> — 上ルーラーで左右ドラッグ→縦ガイド、左ルーラーで上下ドラッグ→横ガイド。ルーラーでドラッグして移動、ルーラー外にドラッグして削除</li>
       </ul>
 
-      <h2>空白塗り</h2>
+      <h2>ブロック編集</h2>
+      <p>アクティブテキストレイヤー内で文字単位で領域を選択しアクションを適用します。</p>
       <ul>
-        <li><I><Paintbrush size={14} /></I> <strong>塗りモード</strong> — ボタンで有効化、再度押すと解除</li>
-        <li><strong>ドラッグ</strong> — アクティブレイヤー上で空白を不透明に塗り（黄色表示）</li>
-        <li><K>Shift</K>+<strong>ドラッグ</strong> — 塗りを消去</li>
-        <li><K>Escape</K> — モード解除</li>
+        <li><I><BoxSelect size={14} /></I> <strong>ブロック編集有効化</strong></li>
+        <li><I><Square size={14} /></I> <strong>矩形選択</strong> / <I><Brush size={14} /></I> <strong>ブラシ選択</strong></li>
+        <li><I><Paintbrush size={14} /></I> <strong>塗り適用</strong> / <I><PaintbrushVertical size={14} /></I> <strong>塗り消去</strong></li>
+        <li><I><PaintBucket size={14} /></I> <strong>ボックス自動塗り</strong></li>
+        <li><K>Shift</K>+ドラッグ — 追加選択 / <K>Ctrl+Shift</K>+ドラッグ — 選択解除</li>
+        <li><K>Escape</K> — 選択解除 → モード解除</li>
       </ul>
 
       <h2>テキスト編集</h2>
       <ul>
-        <li><strong>スペースバー</strong> — ドット文字サイクル入力。Hair Space → Thin Space → ... 9段階。</li>
+        <li><K>Shift+Space</K> — ドット文字サイクル入力（16段階）</li>
+        <li><strong>Space</strong> — 通常スペース入力</li>
       </ul>
 
       <h2>レイヤーキャンバス</h2>
       <p><I><PenTool size={14} /></I> ボタンでモーダルを開き、画像を参考にAAを作成してレイヤーとして挿入。</p>
 
-      <h2>パレット</h2>
+      <h2>レイヤープロパティ</h2>
       <ul>
-        <li><strong>文字クリック</strong> — アクティブレイヤーのカーソル位置に挿入</li>
-        <li><strong>文字右クリック</strong> — 削除</li>
-        <li><I><MoreVertical size={14} /></I> メニューからキャラクター追加（複数文字入力で一括登録）、パレット管理、インポート/エクスポート (.aapal/.aapals)</li>
+        <li><I><SlidersHorizontal size={14} /></I> — テキスト: 不透明度 / 画像: 不透明度+彩度</li>
       </ul>
+
+      <h2>パレット</h2>
+      <p>キャラクターパレットとボックスパレットをドロップダウンで切替。</p>
+      <ul>
+        <li><strong>キャラクター</strong>: クリックで選択、ダブルクリックで挿入</li>
+        <li><strong>ボックス</strong>: クリックで有効化（キャンバスドラッグでボックス生成）</li>
+        <li><strong>スタンプ</strong>: 複数行AAテキストを保存、クリックでレイヤー挿入。ホバーでプレビュー表示</li>
+        <li><I><MoreVertical size={14} /></I> メニュー: キャラクター/ボックス/スタンプ追加・削除、パレット管理、インポート/エクスポート</li>
+      </ul>
+      <p><I><Stamp size={14} /></I> <strong>ドキュメントをスタンプとして保存</strong> — ヘッダーの保存ボタン横。スタンプパレット選択時に有効化</p>
 
       <h2>ライブラリ (MLT)</h2>
       <ul>
@@ -386,8 +435,9 @@ function ManualJa() {
           <tr><td><K>Ctrl+Z</K></td><td>元に戻す</td></tr>
           <tr><td><K>Ctrl+Shift+Z</K></td><td>やり直し</td></tr>
           <tr><td><K>Ctrl+C</K>/<K>V</K></td><td>コピー/貼り付け</td></tr>
-          <tr><td><K>Escape</K></td><td>モードキャンセル / 選択解除</td></tr>
-          <tr><td><K>Space</K></td><td>ドット文字サイクル入力</td></tr>
+          <tr><td><K>Delete</K> / <K>Backspace</K></td><td>選択レイヤー削除</td></tr>
+          <tr><td><K>Escape</K></td><td>ボックス/パレット解除 → ブロック選択解除 → モード解除 → レイヤー選択解除</td></tr>
+          <tr><td><K>Shift+Space</K></td><td>ドット文字サイクル入力</td></tr>
         </tbody>
       </table>
     </>
@@ -472,29 +522,40 @@ function ManualEn() {
         <li><strong>Custom Guides</strong> — Drag left/right from top ruler for vertical guides, drag up/down from left ruler for horizontal guides. Drag on ruler to move, drag out of safe area to remove</li>
       </ul>
 
-      <h2>Opaque Paint</h2>
-      <p>Mark whitespace as opaque so lower layers don't bleed through.</p>
+      <h2>Block Editing</h2>
+      <p>Select character regions within the active text layer and apply actions.</p>
       <ul>
-        <li><I><Paintbrush size={14} /></I> <strong>Paint mode</strong> — click to toggle on/off</li>
-        <li><strong>Drag</strong> — paint whitespace on active layer (shown in yellow)</li>
-        <li><K>Shift</K>+<strong>Drag</strong> — erase painted regions</li>
-        <li><K>Escape</K> — exit mode</li>
+        <li><I><BoxSelect size={14} /></I> <strong>Enable Block Edit</strong></li>
+        <li><I><Square size={14} /></I> <strong>Rectangle Select</strong> / <I><Brush size={14} /></I> <strong>Brush Select</strong> (hover guide)</li>
+        <li><I><Paintbrush size={14} /></I> <strong>Apply Opaque</strong> / <I><PaintbrushVertical size={14} /></I> <strong>Remove Opaque</strong></li>
+        <li><I><PaintBucket size={14} /></I> <strong>Box Auto Opaque</strong> — auto-opaque on box creation</li>
+        <li><K>Shift</K>+drag — additive / <K>Ctrl+Shift</K>+drag — subtractive</li>
+        <li><K>Escape</K> — clear selection → exit mode</li>
       </ul>
 
       <h2>Text Editing</h2>
       <ul>
-        <li><strong>Spacebar</strong> — Dot character cycling. Hair Space → Thin Space → ... 9 stages.</li>
+        <li><K>Shift+Space</K> — Dot character cycling (16 stages)</li>
+        <li><strong>Space</strong> — Normal space input</li>
       </ul>
 
       <h2>Layer Canvas (Quick Edit)</h2>
       <p><I><PenTool size={14} /></I> opens a modal for composing AA with an image reference, then inserts as a layer.</p>
 
-      <h2>Palette</h2>
+      <h2>Layer Properties</h2>
       <ul>
-        <li><strong>Click character</strong> — Insert at cursor position in active layer</li>
-        <li><strong>Right-click character</strong> — Delete</li>
-        <li><I><MoreVertical size={14} /></I> menu for adding characters (multiple characters at once), managing palettes, import/export (.aapal/.aapals)</li>
+        <li><I><SlidersHorizontal size={14} /></I> — Text layers: opacity / Image layers: opacity + saturation</li>
       </ul>
+
+      <h2>Palette</h2>
+      <p>Switch between character and box palettes via dropdown.</p>
+      <ul>
+        <li><strong>Character palette</strong>: click to select, double-click to insert</li>
+        <li><strong>Box palette</strong>: click to activate (drag on canvas to create box layer)</li>
+        <li><strong>Stamp palette</strong>: multi-line AA text, click to activate then click canvas to insert. Hover shows preview</li>
+        <li><I><MoreVertical size={14} /></I> menu: add/delete characters, boxes, or stamps, palette management, import/export (.aapal/.aapals)</li>
+      </ul>
+      <p><I><Stamp size={14} /></I> <strong>Save Document as Stamp</strong> — next to Save button in header. Enabled when a stamp palette is selected</p>
 
       <h2>Library (MLT)</h2>
       <ul>
@@ -529,8 +590,9 @@ function ManualEn() {
           <tr><td><K>Ctrl+Z</K></td><td>Undo</td></tr>
           <tr><td><K>Ctrl+Shift+Z</K></td><td>Redo</td></tr>
           <tr><td><K>Ctrl+C</K>/<K>V</K></td><td>Copy/Paste layers (tab focus: documents)</td></tr>
-          <tr><td><K>Escape</K></td><td>Cancel mode / Deselect</td></tr>
-          <tr><td><K>Space</K></td><td>Dot character cycling</td></tr>
+          <tr><td><K>Delete</K> / <K>Backspace</K></td><td>Delete selected layers</td></tr>
+          <tr><td><K>Escape</K></td><td>Box/palette clear → block clear → mode exit → layer deselect</td></tr>
+          <tr><td><K>Shift+Space</K></td><td>Dot character cycling</td></tr>
         </tbody>
       </table>
     </>

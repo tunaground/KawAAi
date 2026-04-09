@@ -62,6 +62,16 @@
   border-radius: 1px;
 }
 
+.imageSwatch {
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
 .name {
   flex: 1;
   overflow: hidden;

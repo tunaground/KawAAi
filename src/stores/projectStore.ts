@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import type { ProjectFile, Document, Layer, ViewSettings, Namespace } from "../types/project";
-import type { DragState, LayerClipboard } from "../types/editor";
+import type { DragState, LayerClipboard, BlockSelectTool } from "../types/editor";
+import type { OpaqueRange } from "../types/project";
+import type { BoxPreset, StampPreset } from "../types/palette";
 import { t } from "../i18n";
 
 const MAX_UNDO = 50;
@@ -12,7 +14,7 @@ interface UndoSnapshot {
   nextLayerId: number;
 }
 
-export type EditorMode = "normal" | "opaquePaint";
+export type EditorMode = "normal" | "blockSelect";
 
 const LAYER_COLORS = [
   "#2196f3", "#4caf50", "#ff9800", "#e91e63",
@@ -89,6 +91,23 @@ interface ProjectState {
   // 에디터 모드
   editorMode: EditorMode;
   setEditorMode: (mode: EditorMode) => void;
+
+  // 블록 선택
+  blockSelection: OpaqueRange[];
+  blockSelectTool: BlockSelectTool;
+  setBlockSelection: (ranges: OpaqueRange[]) => void;
+  clearBlockSelection: () => void;
+  setBlockSelectTool: (tool: BlockSelectTool) => void;
+
+  // 박스 생성
+  activeBoxPreset: BoxPreset | null;
+  setActiveBoxPreset: (preset: BoxPreset | null) => void;
+  boxAutoOpaque: boolean;
+  setBoxAutoOpaque: (v: boolean) => void;
+
+  // 스탬프
+  activeStampPreset: StampPreset | null;
+  setActiveStampPreset: (preset: StampPreset | null) => void;
 
   // 드래그
   dragState: DragState | null;
@@ -388,6 +407,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       fontSize: doc.fontSize ?? 16,
       lineHeight: doc.lineHeight ?? 18,
       guides: doc.guides ?? { h: [], v: [] },
+      blockSelection: [],
     });
   },
 
@@ -407,6 +427,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       textColor: opts.textColor ?? "#000000",
       opacity: opts.opacity ?? (type === "image" ? 0.5 : 1),
       imageSrc: opts.imageSrc ?? "",
+      saturation: opts.saturation ?? 1,
       opaqueRanges: opts.opaqueRanges ?? [],
     };
     set({
@@ -446,9 +467,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   setActiveLayer: (id, modifier = null) => {
     if (id === null) {
-      set({ activeLayerId: null, selectedLayerIds: new Set() });
+      set({ activeLayerId: null, selectedLayerIds: new Set(), blockSelection: [] });
       return;
     }
+    const prevActive = get().activeLayerId;
+    if (prevActive !== id) set({ blockSelection: [] });
     const state = get();
     const newSelected = new Set(state.selectedLayerIds);
 
@@ -509,7 +532,24 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   // 에디터 모드
   editorMode: "normal" as EditorMode,
-  setEditorMode: (mode) => set({ editorMode: mode }),
+  setEditorMode: (mode) => set({ editorMode: mode, blockSelection: [] }),
+
+  // 블록 선택
+  blockSelection: [] as OpaqueRange[],
+  blockSelectTool: "rect" as BlockSelectTool,
+  setBlockSelection: (ranges) => set({ blockSelection: ranges }),
+  clearBlockSelection: () => set({ blockSelection: [] }),
+  setBlockSelectTool: (tool) => set({ blockSelectTool: tool }),
+
+  // 박스 생성
+  activeBoxPreset: null as BoxPreset | null,
+  setActiveBoxPreset: (preset) => set({ activeBoxPreset: preset }),
+  boxAutoOpaque: true,
+  setBoxAutoOpaque: (v) => set({ boxAutoOpaque: v }),
+
+  // 스탬프
+  activeStampPreset: null as StampPreset | null,
+  setActiveStampPreset: (preset) => set({ activeStampPreset: preset }),
 
   // 드래그
   dragState: null,

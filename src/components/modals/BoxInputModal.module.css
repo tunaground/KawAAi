@@ -1,0 +1,160 @@
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem;
+  min-width: 220px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.title {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+}
+
+.nameInput {
+  width: 100%;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+  outline: none;
+  margin-bottom: 0.75rem;
+  box-sizing: border-box;
+}
+
+.nameInput:focus {
+  border-color: var(--accent);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 32px 32px 32px 32px;
+  gap: 4px;
+  margin-bottom: 0.75rem;
+  justify-content: center;
+}
+
+.charInput {
+  width: 32px;
+  height: 32px;
+  text-align: center;
+  font-family: var(--font-aa);
+  font-size: 16px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  outline: none;
+  box-sizing: border-box;
+  padding: 0;
+}
+
+.charInput:focus {
+  border-color: var(--accent);
+}
+
+.padCell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+
+.padLabel {
+  font-size: 0.55rem;
+  color: var(--text-secondary);
+  line-height: 1;
+}
+
+.padInput {
+  width: 28px;
+  height: 18px;
+  text-align: center;
+  font-size: 0.65rem;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  outline: none;
+  padding: 0;
+  -moz-appearance: textfield;
+}
+
+.padInput::-webkit-outer-spin-button,
+.padInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.padInput:focus {
+  border-color: var(--accent);
+}
+
+.preview {
+  font-family: var(--font-aa);
+  font-size: 14px;
+  line-height: 1.3;
+  color: #000;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin: 0 0 0.75rem;
+  white-space: pre;
+  overflow: auto;
+  resize: both;
+  min-width: 120px;
+  min-height: 50px;
+}
+
+.btns {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.btnCancel {
+  padding: 0.35rem 0.75rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.btnCancel:hover {
+  background: var(--bg-tertiary);
+}
+
+.btnOk {
+  padding: 0.35rem 0.75rem;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.btnOk:hover {
+  background: var(--accent-hover);
+}

@@ -3,6 +3,7 @@ import { useProjectStore } from "../../stores/projectStore";
 import { saveUndoSnapshot } from "../../stores/projectStore";
 import { getDotString } from "../../lib/dotInput";
 import { measureString, LAYER_PADDING } from "../../lib/fontMetrics";
+import { mergeOpaqueRanges, subtractOpaqueRanges } from "../../lib/opaqueRangeUtils";
 import type { Layer, OpaqueRange } from "../../types/project";
 import styles from "./LayerBox.module.css";
 
@@ -24,21 +25,55 @@ export const LayerBox = memo(function LayerBox({ layer, zIndex }: LayerBoxProps)
   const fontSize = useProjectStore((s) => s.fontSize);
   const lineHeight = useProjectStore((s) => s.lineHeight);
 
+  const blockSelection = useProjectStore((s) => s.blockSelection);
+  const setBlockSelection = useProjectStore((s) => s.setBlockSelection);
+  const blockSelectTool = useProjectStore((s) => s.blockSelectTool);
+
   const isActive = layer.id === activeLayerId;
   const isSelected = selectedLayerIds.has(layer.id);
-  const isOpaqueMode = editorMode === "opaquePaint";
+  const isBlockSelectMode = editorMode === "blockSelect";
 
   // 도트 입력 상태
   const dotRef = useRef({ index: 0, startPos: -1, currentLen: 0 });
   // 포커스 세션당 undo 스냅샷 1회만 저장
   const undoSavedRef = useRef(false);
 
-  // ── 채색 드래그 ──
-  const [opaqueDragRect, setOpaqueDragRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  // ── 블록 선택 드래그 ──
+  const [blockDragRect, setBlockDragRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const blockDragSubtract = useRef(false);
+  // ── 브러시 호버 가이드 ──
+  const [brushHover, setBrushHover] = useState<{ line: number; col: number } | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
 
-  const handleOpaqueDragStart = useCallback((e: React.MouseEvent) => {
-    if (!isActive || !isOpaqueMode || layer.type !== "text") return;
+  const handleBrushHover = useCallback((e: React.MouseEvent) => {
+    if (!isActive || !isBlockSelectMode || blockSelectTool !== "brush" || layer.type !== "text") {
+      if (brushHover) setBrushHover(null);
+      return;
+    }
+    const box = boxRef.current;
+    if (!box) return;
+    const rect = box.getBoundingClientRect();
+    const px = e.clientX - rect.left - LAYER_PADDING;
+    const py = e.clientY - rect.top - LAYER_PADDING;
+    const ln = Math.floor(py / lineHeight);
+    const lines = layer.text.split("\n");
+    if (ln < 0 || ln >= lines.length) { setBrushHover(null); return; }
+    const measured = measureString(lines[ln], fontSize);
+    for (let col = 0; col < measured.length; col++) {
+      const m = measured[col];
+      if (px >= m.x && px < m.x + m.width) {
+        if (!brushHover || brushHover.line !== ln || brushHover.col !== col) {
+          setBrushHover({ line: ln, col });
+        }
+        return;
+      }
+    }
+    setBrushHover(null);
+  }, [isActive, isBlockSelectMode, blockSelectTool, layer.type, layer.text, fontSize, lineHeight, brushHover]);
+
+  // ── 블록 선택: 사각 영역 ──
+  const handleBlockRectStart = useCallback((e: React.MouseEvent) => {
+    if (!isActive || !isBlockSelectMode || layer.type !== "text") return;
     e.preventDefault();
     e.stopPropagation();
     const box = boxRef.current;
@@ -46,15 +81,19 @@ export const LayerBox = memo(function LayerBox({ layer, zIndex }: LayerBoxProps)
     const rect = box.getBoundingClientRect();
     const startX = e.clientX;
     const startY = e.clientY;
+    const mod = e.ctrlKey || e.metaKey;
+    const isSubtract = mod && e.shiftKey;
+    const isAdditive = e.shiftKey && !mod;
+    blockDragSubtract.current = isSubtract;
 
-    setOpaqueDragRect({ x: startX - rect.left, y: startY - rect.top, w: 0, h: 0 });
+    setBlockDragRect({ x: startX - rect.left, y: startY - rect.top, w: 0, h: 0 });
 
     const onMove = (ev: MouseEvent) => {
       const curX = ev.clientX - rect.left;
       const curY = ev.clientY - rect.top;
       const sx = startX - rect.left;
       const sy = startY - rect.top;
-      setOpaqueDragRect({
+      setBlockDragRect({
         x: Math.min(sx, curX),
         y: Math.min(sy, curY),
         w: Math.abs(curX - sx),
@@ -65,21 +104,19 @@ export const LayerBox = memo(function LayerBox({ layer, zIndex }: LayerBoxProps)
     const onUp = (ev: MouseEvent) => {
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
-      setOpaqueDragRect(null);
+      setBlockDragRect(null);
 
-      // 픽셀 영역 → 캐릭터 포지션 변환
       const x1 = Math.min(startX, ev.clientX) - rect.left - LAYER_PADDING;
       const y1 = Math.min(startY, ev.clientY) - rect.top - LAYER_PADDING;
       const x2 = Math.max(startX, ev.clientX) - rect.left - LAYER_PADDING;
       const y2 = Math.max(startY, ev.clientY) - rect.top - LAYER_PADDING;
 
-      const startLine = Math.max(0, Math.floor(y1 / lineHeight));
-      const endLine = Math.ceil(y2 / lineHeight);
-
-      // 최신 layer 상태 가져오기
       const currentLayer = useProjectStore.getState().layers.find(l => l.id === layer.id);
       if (!currentLayer) return;
       const lines = currentLayer.text.split("\n");
+
+      const startLine = Math.max(0, Math.floor(y1 / lineHeight));
+      const endLine = Math.ceil(y2 / lineHeight);
 
       const newRanges: OpaqueRange[] = [];
       for (let ln = startLine; ln < endLine && ln < lines.length; ln++) {
@@ -95,25 +132,80 @@ export const LayerBox = memo(function LayerBox({ layer, zIndex }: LayerBoxProps)
         if (sc !== -1) newRanges.push({ line: ln, startCol: sc, endCol: ec });
       }
 
-      if (newRanges.length === 0) return;
+      if (newRanges.length === 0 && !isAdditive && !isSubtract) {
+        setBlockSelection([]);
+        return;
+      }
 
-      // undo
-      saveUndoSnapshot();
-
-      if (ev.shiftKey) {
-        // Shift+드래그 → 제거
-        const erased = subtractOpaqueRanges(currentLayer.opaqueRanges, newRanges);
-        updateLayer(layer.id, { opaqueRanges: erased });
+      const prev = useProjectStore.getState().blockSelection;
+      if (isSubtract) {
+        setBlockSelection(subtractOpaqueRanges(prev, newRanges));
+      } else if (isAdditive) {
+        setBlockSelection(mergeOpaqueRanges([...prev, ...newRanges]));
       } else {
-        // 일반 드래그 → 채색
-        const merged = mergeOpaqueRanges([...currentLayer.opaqueRanges, ...newRanges]);
-        updateLayer(layer.id, { opaqueRanges: merged });
+        setBlockSelection(newRanges);
       }
     };
 
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
-  }, [isActive, isOpaqueMode, layer.id, layer.type, updateLayer]);
+  }, [isActive, isBlockSelectMode, layer.id, layer.type, fontSize, lineHeight, setBlockSelection]);
+
+  // ── 블록 선택: 브러시 ──
+  const handleBlockBrushStart = useCallback((e: React.MouseEvent) => {
+    if (!isActive || !isBlockSelectMode || layer.type !== "text") return;
+    e.preventDefault();
+    e.stopPropagation();
+    const box = boxRef.current;
+    if (!box) return;
+    const rect = box.getBoundingClientRect();
+    const mod = e.ctrlKey || e.metaKey;
+    const isSubtract = mod && e.shiftKey;
+    const isAdditive = e.shiftKey && !mod;
+
+    const currentLayer = useProjectStore.getState().layers.find(l => l.id === layer.id);
+    if (!currentLayer) return;
+    const lines = currentLayer.text.split("\n");
+
+    let accumulated: OpaqueRange[] = isAdditive || isSubtract
+      ? [...useProjectStore.getState().blockSelection]
+      : [];
+
+    const addCharAt = (clientX: number, clientY: number) => {
+      const px = clientX - rect.left - LAYER_PADDING;
+      const py = clientY - rect.top - LAYER_PADDING;
+      const ln = Math.floor(py / lineHeight);
+      if (ln < 0 || ln >= lines.length) return;
+      const measured = measureString(lines[ln], fontSize);
+      for (let col = 0; col < measured.length; col++) {
+        const m = measured[col];
+        if (px >= m.x && px < m.x + m.width) {
+          const charRange: OpaqueRange = { line: ln, startCol: col, endCol: col + 1 };
+          if (isSubtract) {
+            accumulated = subtractOpaqueRanges(accumulated, [charRange]);
+          } else {
+            accumulated = mergeOpaqueRanges([...accumulated, charRange]);
+          }
+          setBlockSelection(accumulated);
+          break;
+        }
+      }
+    };
+
+    addCharAt(e.clientX, e.clientY);
+
+    const onMove = (ev: MouseEvent) => {
+      addCharAt(ev.clientX, ev.clientY);
+    };
+
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, [isActive, isBlockSelectMode, layer.id, layer.type, fontSize, lineHeight, setBlockSelection]);
 
   const startDrag = useCallback(
     (e: React.MouseEvent, type: "move" | "resize") => {
@@ -165,7 +257,7 @@ export const LayerBox = memo(function LayerBox({ layer, zIndex }: LayerBoxProps)
         return; // 브라우저 기본 동작에 맡김
       }
 
-      if (e.key === " ") {
+      if (e.key === " " && e.shiftKey) {
         e.preventDefault();
         if (!undoSavedRef.current) {
           saveUndoSnapshot();
@@ -209,11 +301,13 @@ export const LayerBox = memo(function LayerBox({ layer, zIndex }: LayerBoxProps)
     .filter(Boolean)
     .join(" ");
 
-  // 채색 영역 표시용: 문자별 opaqueRange 체크
-  const showOpaque = isOpaqueMode && isActive;
+  // 채색/블록선택 영역 표시용
+  const showOpaque = isBlockSelectMode && isActive;
+  const showBlockSelect = isBlockSelectMode && isActive && blockSelection.length > 0;
+  const showBrushHover = isBlockSelectMode && isActive && blockSelectTool === "brush" && brushHover !== null;
   const displayContent = useMemo(() => {
     if (layer.type !== "text") return null;
-    if (!showOpaque && !charGridEnabled) return layer.text;
+    if (!showOpaque && !charGridEnabled && !showBlockSelect && !showBrushHover) return layer.text;
 
     const lines = layer.text.split("\n");
     const result: React.ReactNode[] = [];
@@ -223,9 +317,19 @@ export const LayerBox = memo(function LayerBox({ layer, zIndex }: LayerBoxProps)
       const chars = [...line];
       chars.forEach((ch, col) => {
         let bg = "";
-        if (showOpaque && isCharInOpaqueRanges(lineIdx, col, layer.opaqueRanges)) {
-          bg = "rgba(255, 230, 0, 0.5)";
-        } else if (charGridEnabled) {
+        const isHover = showBrushHover && brushHover!.line === lineIdx && brushHover!.col === col;
+        const inBlock = showBlockSelect && isCharInOpaqueRanges(lineIdx, col, blockSelection);
+        const inOpaque = showOpaque && isCharInOpaqueRanges(lineIdx, col, layer.opaqueRanges);
+        if (isHover) {
+          bg = "rgba(30, 100, 220, 0.2)";
+        }
+        if (inBlock && inOpaque) {
+          bg = "rgba(30, 180, 80, 0.5)";
+        } else if (inBlock) {
+          bg = "rgba(30, 100, 220, 0.45)";
+        } else if (inOpaque) {
+          bg = isHover ? "rgba(200, 210, 0, 0.6)" : "rgba(255, 230, 0, 0.5)";
+        } else if (!isHover && charGridEnabled) {
           bg = keyIdx % 2 === 0 ? "rgba(255,0,0,0.2)" : "rgba(0,100,255,0.2)";
         }
         if (bg) {
@@ -239,7 +343,7 @@ export const LayerBox = memo(function LayerBox({ layer, zIndex }: LayerBoxProps)
     });
 
     return result;
-  }, [layer.type, layer.text, layer.opaqueRanges, showOpaque, charGridEnabled]);
+  }, [layer.type, layer.text, layer.opaqueRanges, showOpaque, charGridEnabled, showBlockSelect, blockSelection, showBrushHover, brushHover]);
 
   return (
     <div
@@ -254,9 +358,15 @@ export const LayerBox = memo(function LayerBox({ layer, zIndex }: LayerBoxProps)
         opacity: layer.visible ? layer.opacity : 0,
         display: layer.visible ? "" : "none",
       }}
+      onMouseMove={handleBrushHover}
+      onMouseLeave={() => brushHover && setBrushHover(null)}
       onMouseDown={(e) => {
-        if (isOpaqueMode && isActive) {
-          handleOpaqueDragStart(e);
+        if (isBlockSelectMode && isActive) {
+          if (blockSelectTool === "rect") {
+            handleBlockRectStart(e);
+          } else {
+            handleBlockBrushStart(e);
+          }
         } else {
           setActiveLayer(layer.id);
         }
@@ -279,6 +389,7 @@ export const LayerBox = memo(function LayerBox({ layer, zIndex }: LayerBoxProps)
           src={layer.imageSrc}
           alt=""
           draggable={false}
+          style={layer.saturation !== 1 ? { filter: `saturate(${layer.saturation})` } : undefined}
         />
       ) : (
         <div className={styles.editArea}>
@@ -288,8 +399,8 @@ export const LayerBox = memo(function LayerBox({ layer, zIndex }: LayerBoxProps)
           >
             {displayContent}
           </div>
-          {/* 채색모드에서는 textarea 비활성 (드래그가 textarea에 먹히지 않도록) */}
-          {!isOpaqueMode && (
+          {/* 블록 편집 모드에서는 textarea 비활성 */}
+          {!isBlockSelectMode && (
             <textarea
               className={styles.textarea}
               value={layer.text}
@@ -302,19 +413,19 @@ export const LayerBox = memo(function LayerBox({ layer, zIndex }: LayerBoxProps)
               readOnly={layer.locked}
             />
           )}
-          {/* 채색 드래그 선택 영역 표시 */}
-          {opaqueDragRect && (
+          {/* 블록 선택 드래그 영역 표시 */}
+          {blockDragRect && (
             <div
               style={{
                 position: "absolute",
-                left: opaqueDragRect.x,
-                top: opaqueDragRect.y,
-                width: opaqueDragRect.w,
-                height: opaqueDragRect.h,
-                background: editorMode === "opaquePaint"
-                  ? "rgba(255, 230, 0, 0.3)"
-                  : "rgba(255, 50, 50, 0.3)",
-                border: `1px dashed ${editorMode === "opaquePaint" ? "#ffc107" : "#f44336"}`,
+                left: blockDragRect.x,
+                top: blockDragRect.y,
+                width: blockDragRect.w,
+                height: blockDragRect.h,
+                background: blockDragSubtract.current
+                  ? "rgba(255, 50, 50, 0.25)"
+                  : "rgba(30, 100, 220, 0.25)",
+                border: `1px dashed ${blockDragSubtract.current ? "#f44336" : "#1e64dc"}`,
                 pointerEvents: "none",
                 zIndex: 10,
               }}
@@ -330,57 +441,6 @@ export const LayerBox = memo(function LayerBox({ layer, zIndex }: LayerBoxProps)
 
 function isCharInOpaqueRanges(line: number, col: number, ranges: OpaqueRange[]): boolean {
   return ranges.some(r => r.line === line && col >= r.startCol && col < r.endCol);
-}
-
-/** 같은 줄의 겹치는 범위를 병합 */
-function mergeOpaqueRanges(ranges: OpaqueRange[]): OpaqueRange[] {
-  if (ranges.length === 0) return [];
-  const byLine = new Map<number, OpaqueRange[]>();
-  ranges.forEach(r => {
-    const arr = byLine.get(r.line) || [];
-    arr.push(r);
-    byLine.set(r.line, arr);
-  });
-  const result: OpaqueRange[] = [];
-  byLine.forEach((lineRanges) => {
-    lineRanges.sort((a, b) => a.startCol - b.startCol);
-    let cur = { ...lineRanges[0] };
-    for (let i = 1; i < lineRanges.length; i++) {
-      const r = lineRanges[i];
-      if (r.startCol <= cur.endCol) {
-        cur.endCol = Math.max(cur.endCol, r.endCol);
-      } else {
-        result.push(cur);
-        cur = { ...r };
-      }
-    }
-    result.push(cur);
-  });
-  return result;
-}
-
-/** 기존 범위에서 제거 범위를 빼기 */
-function subtractOpaqueRanges(existing: OpaqueRange[], toRemove: OpaqueRange[]): OpaqueRange[] {
-  let result = [...existing];
-  for (const rem of toRemove) {
-    const next: OpaqueRange[] = [];
-    for (const r of result) {
-      if (r.line !== rem.line || r.endCol <= rem.startCol || r.startCol >= rem.endCol) {
-        next.push(r); // 겹치지 않음
-      } else {
-        // 왼쪽 잔여
-        if (r.startCol < rem.startCol) {
-          next.push({ line: r.line, startCol: r.startCol, endCol: rem.startCol });
-        }
-        // 오른쪽 잔여
-        if (r.endCol > rem.endCol) {
-          next.push({ line: r.line, startCol: rem.endCol, endCol: r.endCol });
-        }
-      }
-    }
-    result = next;
-  }
-  return result;
 }
 
 /**

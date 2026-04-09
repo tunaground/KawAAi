@@ -46,3 +46,19 @@ export function getDotString(index: number): string {
   result += DOTS[dotIndex];
   return result;
 }
+
+/**
+ * 지정한 픽셀 폭에 정확히 맞는 도트 문자열 생성.
+ * Em Space(16px) 반복 + 나머지를 DOTS 배열로 채움.
+ * px=0이면 빈 문자열 반환.
+ */
+export function fillDotByPx(px: number): string {
+  if (px <= 0) return "";
+  const emCount = Math.floor(px / 16);
+  const remainder = Math.round(px) % 16;
+  let result = "\u2003".repeat(emCount);
+  if (remainder > 0) {
+    result += DOTS[remainder - 1]; // DOTS[0]=1px, DOTS[1]=2px, ...
+  }
+  return result;
+}

@@ -71,6 +71,28 @@ fn save_palette_set(app: tauri::AppHandle, data: Value) -> Result<(), String> {
     fs::write(&path, content).map_err(|e| e.to_string())
 }
 
+/// 박스프리셋 파일 로드
+#[tauri::command]
+fn load_box_set(app: tauri::AppHandle) -> Result<Value, String> {
+    let path = config_dir(&app).join("boxpresets.json");
+    if !path.exists() {
+        return Ok(Value::Null);
+    }
+    let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let json: Value = serde_json::from_str(&content).map_err(|e| e.to_string())?;
+    Ok(json)
+}
+
+/// 박스프리셋 파일 저장
+#[tauri::command]
+fn save_box_set(app: tauri::AppHandle, data: Value) -> Result<(), String> {
+    let dir = config_dir(&app);
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let path = dir.join("boxpresets.json");
+    let content = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
+    fs::write(&path, content).map_err(|e| e.to_string())
+}
+
 /// 디렉토리 내 MLT 파일 목록 반환
 #[tauri::command]
 fn list_mlt_files(dir: String) -> Result<Vec<String>, String> {
@@ -126,6 +148,8 @@ pub fn run() {
             save_config,
             load_palette_set,
             save_palette_set,
+            load_box_set,
+            save_box_set,
             list_mlt_files,
             read_mlt_file,
             export_text,

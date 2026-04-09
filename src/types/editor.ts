@@ -1,5 +1,7 @@
 /** 런타임 전용 — 파일에 저장 안 됨 */
 
+export type BlockSelectTool = "rect" | "brush";
+
 export interface DragState {
   type: "move" | "resize";
   layerId: number;
@@ -22,5 +24,6 @@ export interface LayerClipboard {
   textColor: string;
   opacity: number;
   imageSrc: string;
+  saturation: number;
   opaqueRanges: import("./project").OpaqueRange[];
 }

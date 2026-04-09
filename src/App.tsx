@@ -8,6 +8,8 @@ import { PreviewPanel } from "./components/panels/PreviewPanel";
 import { PanelResize } from "./components/panels/PanelResize";
 import { Canvas } from "./components/canvas/Canvas";
 import { InputModal, showConfirmModal } from "./components/modals/InputModal";
+import { BoxInputModal } from "./components/modals/BoxInputModal";
+import { StampInputModal } from "./components/modals/StampInputModal";
 import { QuickEditModal } from "./components/modals/QuickEditModal";
 import { SettingsModal } from "./components/modals/SettingsModal";
 import { ManualModal } from "./components/modals/ManualModal";
@@ -409,6 +411,8 @@ function App() {
       <StatusBar />
 
       <InputModal />
+      <BoxInputModal />
+      <StampInputModal />
       <QuickEditModal
         open={quickEditOpen}
         onClose={() => setQuickEditOpen(false)}
@@ -470,6 +474,12 @@ function migrateProjectData(data: any) {
       if (doc.viewSettings.rulerUnit == null) doc.viewSettings.rulerUnit = "px";
     }
     if (doc.guides == null) doc.guides = { h: [], v: [] };
+    // 레이어별 saturation 필드 추가
+    if (doc.layers) {
+      for (const layer of doc.layers) {
+        if (layer.saturation == null) layer.saturation = 1;
+      }
+    }
   }
 }
 

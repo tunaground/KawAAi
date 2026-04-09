@@ -15,23 +15,14 @@
   border-bottom: 1px solid var(--border);
   min-height: 0;
   overflow: hidden;
-  flex-shrink: 0;
 }
+
+.flexSection:not(.collapsed) {
+  flex: 1;
+}
+
 .collapsed .sectionBody {
   display: none;
-}
-
-
-.sectionResize {
-  height: 4px;
-  cursor: ns-resize;
-  background: transparent;
-  flex-shrink: 0;
-  border-bottom: 1px solid var(--border);
-}
-.sectionResize:hover {
-  background: var(--accent);
-  opacity: 0.4;
 }
 
 .sectionHeader {
@@ -116,13 +107,6 @@
   color: var(--text-primary);
 }
 
-.bottomBlock {
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  overflow: hidden;
-}
-
 .sectionBody {
   flex: 1;
   overflow-y: auto;
@@ -137,4 +121,51 @@
   font-size: 0.75rem;
   color: var(--text-secondary);
   text-align: center;
+}
+
+.layerMenuBtn {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.layerMenuBtn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.layerMenu {
+  position: fixed;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 0;
+  min-width: 150px;
+  z-index: 200;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.layerMenuItem {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.layerMenuItem:hover {
+  background: var(--bg-secondary);
+}
+
+.layerMenuDisabled {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
 }

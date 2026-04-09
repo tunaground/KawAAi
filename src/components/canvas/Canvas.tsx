@@ -1,7 +1,9 @@
 import { useRef, useEffect, useCallback, useState } from "react";
-import { useProjectStore } from "../../stores/projectStore";
-import { CANVAS_MARGIN } from "../../lib/fontMetrics";
+import { useProjectStore, saveUndoSnapshot } from "../../stores/projectStore";
+import { CANVAS_MARGIN, LAYER_PADDING, measureCharWidth, measureString, getMeasureCtx } from "../../lib/fontMetrics";
+import { fillDotByPx, getDotString } from "../../lib/dotInput";
 import { getSnapX } from "../../lib/compositor";
+import type { BoxPreset } from "../../types/palette";
 import { LayerBox } from "./LayerBox";
 import styles from "./Canvas.module.css";
 
@@ -21,11 +23,15 @@ export function Canvas() {
   const setCanvasSize = useProjectStore((s) => s.setCanvasSize);
   const gridVisible = useProjectStore((s) => s.viewSettings.gridVisible);
   const canvasLocked = useProjectStore((s) => s.viewSettings.canvasLocked);
+  const snapEnabled = useProjectStore((s) => s.viewSettings.snapEnabled);
   const fontSize = useProjectStore((s) => s.fontSize);
   const lineHeight = useProjectStore((s) => s.lineHeight);
   const rulerUnit = useProjectStore((s) => s.viewSettings.rulerUnit);
   const isDraggingLayer = useProjectStore((s) => s.isDraggingLayer);
   const guides = useProjectStore((s) => s.guides);
+  const activeBoxPreset = useProjectStore((s) => s.activeBoxPreset);
+  const activeStampPreset = useProjectStore((s) => s.activeStampPreset);
+  const createLayer = useProjectStore((s) => s.createLayer);
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const safeAreaRef = useRef<HTMLDivElement>(null);
@@ -35,6 +41,21 @@ export function Canvas() {
   const guidesRef = useRef<HTMLCanvasElement>(null);
 
   const m = CANVAS_MARGIN;
+
+  // ── 박스 드래그 상태 ──
+  const [boxDraw, setBoxDraw] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  // ── 캔버스 호버 위치 (박스/스탬프 프리뷰용) ──
+  const [canvasHover, setCanvasHover] = useState<{ x: number; y: number } | null>(null);
+
+  // ── 스냅 헬퍼 ──
+  const snap = (x: number, y: number) => {
+    if (!snapEnabled) return { x, y };
+    const sx = getSnapX(fontSize);
+    return {
+      x: sx > 0 ? Math.round(x / sx) * sx : x,
+      y: Math.round(y / lineHeight) * lineHeight,
+    };
+  };
 
   // 가이드 드래그 상태
   const [guideDrag, setGuideDrag] = useState<GuideDrag | null>(null);
@@ -407,6 +428,113 @@ export function Canvas() {
     document.addEventListener("mouseup", onUp);
   };
 
+  // ── 박스 드래그 핸들러 ──
+  const handleBoxDrawStart = (e: React.MouseEvent) => {
+    if (!activeBoxPreset) return;
+    // LayerBox 위에서의 클릭은 무시 (bubbling으로 올라온 경우)
+    if ((e.target as HTMLElement).closest(`.${styles.safeArea}`) !== e.currentTarget) return;
+    e.preventDefault();
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const rawStart = snap(e.clientX - rect.left - m, e.clientY - rect.top - m);
+    const startX = rawStart.x;
+    const startY = rawStart.y;
+
+    setBoxDraw({ x: startX, y: startY, w: 0, h: 0 });
+    let cancelled = false;
+
+    const onMove = (ev: MouseEvent) => {
+      const curX = ev.clientX - rect.left - m;
+      const curY = ev.clientY - rect.top - m;
+      setBoxDraw({
+        x: Math.min(startX, curX),
+        y: Math.min(startY, curY),
+        w: Math.abs(curX - startX),
+        h: Math.abs(curY - startY),
+      });
+    };
+
+    const cleanup = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      document.removeEventListener("keydown", onKeyDown, true);
+      setBoxDraw(null);
+    };
+
+    const onKeyDown = (ev: KeyboardEvent) => {
+      if (ev.key === "Escape") {
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        cancelled = true;
+        cleanup();
+      }
+    };
+
+    const onUp = (ev: MouseEvent) => {
+      cleanup();
+      if (cancelled) return;
+
+      const finalX = Math.min(startX, ev.clientX - rect.left - m);
+      const finalY = Math.min(startY, ev.clientY - rect.top - m);
+      const finalW = Math.abs((ev.clientX - rect.left - m) - startX);
+      const finalH = Math.abs((ev.clientY - rect.top - m) - startY);
+
+      const preset = useProjectStore.getState().activeBoxPreset;
+      if (!preset || finalW < 10 || finalH < 10) return;
+
+      saveUndoSnapshot();
+      const fs = useProjectStore.getState().fontSize;
+      const lh = useProjectStore.getState().lineHeight;
+      const pad = LAYER_PADDING * 2;
+      const border = 2;
+      const box = generateBoxText(preset, finalW, finalH, fs, lh);
+      const layerW = box.textWidth + pad + border;
+      const layerH = box.lineCount * lh + pad + border;
+      const opts: Partial<import("../../types/project").Layer> = { name: preset.name };
+      if (useProjectStore.getState().boxAutoOpaque) {
+        const lines = box.text.split("\n");
+        const opaqueRanges: import("../../types/project").OpaqueRange[] = [];
+        lines.forEach((line, ln) => {
+          const chars = [...line];
+          if (chars.length > 0) {
+            opaqueRanges.push({ line: ln, startCol: 0, endCol: chars.length });
+          }
+        });
+        opts.opaqueRanges = opaqueRanges;
+      }
+      createLayer(box.text, finalX, finalY, layerW, layerH, opts);
+    };
+
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    document.addEventListener("keydown", onKeyDown, true);
+  };
+
+  // ── 스탬프 클릭 삽입 핸들러 ──
+  const handleStampClick = (e: React.MouseEvent) => {
+    if (!activeStampPreset) return;
+    if ((e.target as HTMLElement).closest(`.${styles.safeArea}`) !== e.currentTarget) return;
+    e.preventDefault();
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const raw = snap(e.clientX - rect.left - m, e.clientY - rect.top - m);
+    const x = raw.x;
+    const y = raw.y;
+    const fs = useProjectStore.getState().fontSize;
+    const lh = useProjectStore.getState().lineHeight;
+    const text = activeStampPreset.text;
+    const lines = text.split("\n");
+    const ctx = getMeasureCtx(fs);
+    let maxW = 0;
+    lines.forEach((l) => { maxW = Math.max(maxW, ctx.measureText(l).width); });
+    const pad = LAYER_PADDING * 2;
+    const border = 2;
+    const layerW = Math.ceil(maxW) + pad + border;
+    const layerH = lines.length * lh + pad + border;
+    saveUndoSnapshot();
+    createLayer(text, x, y, layerW, layerH, { name: activeStampPreset.name });
+  };
+
   return (
     <div className={styles.canvasArea}>
       <div
@@ -429,13 +557,106 @@ export function Canvas() {
           onMouseDown={handleRulerMouseDown("h")}
         />
 
-        <div className={styles.safeArea} ref={safeAreaRef}>
+        <div
+          className={styles.safeArea}
+          ref={safeAreaRef}
+          onMouseDown={activeBoxPreset ? handleBoxDrawStart : activeStampPreset ? handleStampClick : undefined}
+          onMouseMove={(activeBoxPreset || activeStampPreset) ? (e) => {
+            const rect = canvasRef.current?.getBoundingClientRect();
+            if (!rect) return;
+            const pos = snap(e.clientX - rect.left - m, e.clientY - rect.top - m);
+            setCanvasHover(pos);
+          } : undefined}
+          onMouseLeave={(activeBoxPreset || activeStampPreset) ? () => setCanvasHover(null) : undefined}
+          style={activeBoxPreset || activeStampPreset ? { cursor: "crosshair" } : undefined}
+        >
           {gridVisible && (
             <canvas className={styles.grid} ref={gridRef} />
           )}
           {layers.map((layer, idx) => (
             <LayerBox key={layer.id} layer={layer} zIndex={idx + 1} />
           ))}
+          {/* 박스 드래그 프리뷰 */}
+          {boxDraw && activeBoxPreset && boxDraw.w > 10 && boxDraw.h > 10 && (
+            <div
+              style={{
+                position: "absolute",
+                left: boxDraw.x,
+                top: boxDraw.y,
+                pointerEvents: "none",
+                zIndex: 999,
+                opacity: 0.6,
+                padding: LAYER_PADDING,
+              }}
+            >
+              <pre
+                style={{
+                  margin: 0,
+                  fontFamily: "var(--font-aa)",
+                  fontSize: `${fontSize}px`,
+                  lineHeight: `${lineHeight}px`,
+                  color: "#000",
+                  whiteSpace: "pre",
+                }}
+              >
+                {generateBoxText(activeBoxPreset, boxDraw.w, boxDraw.h, fontSize, lineHeight).text}
+              </pre>
+            </div>
+          )}
+          {/* 박스 호버 프리뷰 (드래그 전) */}
+          {activeBoxPreset && canvasHover && !boxDraw && (
+            <div
+              style={{
+                position: "absolute",
+                left: canvasHover.x,
+                top: canvasHover.y,
+                pointerEvents: "none",
+                zIndex: 999,
+                opacity: 0.4,
+                padding: LAYER_PADDING,
+              }}
+            >
+              <pre
+                style={{
+                  margin: 0,
+                  fontFamily: "var(--font-aa)",
+                  fontSize: `${fontSize}px`,
+                  lineHeight: `${lineHeight}px`,
+                  color: "#000",
+                  whiteSpace: "pre",
+                }}
+              >
+                {generateBoxText(activeBoxPreset, 80, lineHeight * 3, fontSize, lineHeight).text}
+              </pre>
+            </div>
+          )}
+          {/* 스탬프 호버 프리뷰 */}
+          {activeStampPreset && canvasHover && (
+            <div
+              style={{
+                position: "absolute",
+                left: canvasHover.x,
+                top: canvasHover.y,
+                pointerEvents: "none",
+                zIndex: 999,
+                opacity: 0.5,
+                padding: LAYER_PADDING,
+              }}
+            >
+              <pre
+                style={{
+                  margin: 0,
+                  fontFamily: "var(--font-aa)",
+                  fontSize: `${fontSize}px`,
+                  lineHeight: `${lineHeight}px`,
+                  color: "#000",
+                  whiteSpace: "pre",
+                }}
+              >
+                {activeStampPreset.text}
+              </pre>
+            </div>
+          )}
         </div>
 
         {/* 드래그 중 위치 툴팁 */}
@@ -453,4 +674,69 @@ export function Canvas() {
       </div>
     </div>
   );
+}
+
+interface BoxResult {
+  text: string;
+  textWidth: number;
+  lineCount: number;
+}
+
+function generateBoxText(
+  preset: BoxPreset,
+  widthPx: number,
+  heightPx: number,
+  fontSize: number,
+  lineHeight: number,
+): BoxResult {
+  const tCharW = measureCharWidth(preset.t, fontSize);
+  const bCharW = measureCharWidth(preset.b, fontSize);
+  const lCharW = measureCharWidth(preset.l, fontSize);
+  const rCharW = measureCharWidth(preset.r, fontSize);
+  const tlCharW = measureCharWidth(preset.tl, fontSize);
+  const trCharW = measureCharWidth(preset.tr, fontSize);
+  const blCharW = measureCharWidth(preset.bl, fontSize);
+  const brCharW = measureCharWidth(preset.br, fontSize);
+
+  const innerWTop = Math.max(0, widthPx - tlCharW - trCharW);
+  const topRepeat = tCharW > 0 ? Math.max(1, Math.round(innerWTop / tCharW)) : 0;
+
+  // PL 음수 → 상/하 모서리 앞에 패딩 추가
+  const cornerPad = preset.paddingLeft < 0 ? getDotString(-preset.paddingLeft - 1) : "";
+
+  // 상변 문자열 먼저 생성 → measureString으로 실제 렌더 폭 취득
+  const top = cornerPad + preset.tl + preset.t.repeat(topRepeat) + preset.tr;
+  const topMeasured = measureString(top, fontSize);
+  const topRenderW = topMeasured.length > 0
+    ? topMeasured[topMeasured.length - 1].x + topMeasured[topMeasured.length - 1].width
+    : widthPx;
+
+  // 상변 실제 렌더 폭 기준으로 midFill, botRepeat 계산
+  const baseMidW = topRenderW - lCharW - rCharW;
+  // 양수 패딩은 추가, 음수 패딩은 midFill에서 차감
+  const padLAdj = preset.paddingLeft > 0 ? preset.paddingLeft : 0;
+  const padRAdj = preset.paddingRight > 0 ? preset.paddingRight : 0;
+  const padRSub = preset.paddingRight < 0 ? -preset.paddingRight : 0;
+  // PL 음수: cornerPad가 topRenderW에 포함 → 이중차감 방지
+  // PR 음수: top에 변화 없으므로 midFill에서 차감
+  const midFillW = Math.max(0, baseMidW - padRSub);
+  const botRepeat = bCharW > 0 ? Math.max(1, Math.round((topRenderW - blCharW - brCharW) / bCharW)) : 0;
+
+  const totalLines = Math.max(3, Math.round(heightPx / lineHeight));
+  const midLines = totalLines - 2;
+
+  const padL = padLAdj > 0 ? getDotString(padLAdj - 1) : "";
+  const padR = padRAdj > 0 ? getDotString(padRAdj - 1) : "";
+  const midFill = fillDotByPx(midFillW);
+
+  const mid = padL + preset.l + midFill + padR + preset.r;
+  const bot = cornerPad + preset.bl + preset.b.repeat(botRepeat) + preset.br;
+
+  const lines = [top];
+  for (let i = 0; i < midLines; i++) lines.push(mid);
+  lines.push(bot);
+
+  const textWidth = topRenderW;
+
+  return { text: lines.join("\n"), textWidth, lineCount: lines.length };
 }

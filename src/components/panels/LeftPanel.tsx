@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, forwardRef } from "react";
-import { ChevronDown, Plus, Image, Eye, EyeOff, Lock, Unlock } from "lucide-react";
+import { ChevronDown, Plus, Image, Eye, EyeOff, Lock, Unlock, MoreVertical } from "lucide-react";
+import { showConfirmModal } from "../modals/InputModal";
 import { useProjectStore, saveUndoSnapshot } from "../../stores/projectStore";
 import { useConfigStore } from "../../stores/configStore";
 import { useI18n } from "../../i18n";
@@ -9,16 +10,10 @@ import { MltSection } from "./MltSection";
 import styles from "./LeftPanel.module.css";
 import layerItemStyles from "./LayerItem.module.css";
 
-const DEFAULT_HEIGHTS = { layers: 200, palette: 150, library: 250 };
-
 export const LeftPanel = forwardRef<HTMLDivElement>(function LeftPanel(_props, ref) {
   const savedSections = useConfigStore((s) => s.config.sectionsCollapsed);
-  const savedHeights = useConfigStore((s) => s.config.sectionHeights);
   const [sectionsCollapsed, setSectionsCollapsed] = useState(
     savedSections ?? { layers: false, palette: true, library: true }
-  );
-  const [sectionHeights, setSectionHeights] = useState(
-    savedHeights ?? DEFAULT_HEIGHTS
   );
 
   const layers = useProjectStore((s) => s.layers);
@@ -42,6 +37,47 @@ export const LeftPanel = forwardRef<HTMLDivElement>(function LeftPanel(_props, r
     layers.forEach((l) => updateLayer(l.id, { locked: newVal }));
   };
 
+  const removeLayer = useProjectStore((s) => s.removeLayer);
+  const selectedLayerIds = useProjectStore((s) => s.selectedLayerIds);
+
+  // 레이어 ... 메뉴
+  const [layerMenuOpen, setLayerMenuOpen] = useState(false);
+  const layerMenuBtnRef = useRef<HTMLDivElement>(null);
+  const layerMenuRef = useRef<HTMLDivElement>(null);
+  const [layerMenuPos, setLayerMenuPos] = useState({ left: 0, top: 0 });
+
+  useEffect(() => {
+    if (!layerMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (layerMenuBtnRef.current?.contains(e.target as Node)) return;
+      if (layerMenuRef.current?.contains(e.target as Node)) return;
+      setLayerMenuOpen(false);
+    };
+    document.addEventListener("mouseup", handler);
+    return () => document.removeEventListener("mouseup", handler);
+  }, [layerMenuOpen]);
+
+  const handleLayerMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const rect = layerMenuBtnRef.current?.getBoundingClientRect();
+    if (rect) setLayerMenuPos({ left: rect.right + 4, top: rect.top });
+    setLayerMenuOpen(!layerMenuOpen);
+  };
+
+  const handleDeleteSelectedLayers = async () => {
+    setLayerMenuOpen(false);
+    if (selectedLayerIds.size === 0) return;
+    const ok = await showConfirmModal(
+      `${selectedLayerIds.size}${t("layer.deleteSelectedConfirm")}`,
+      t("modal.delete"),
+      "danger"
+    );
+    if (ok) {
+      saveUndoSnapshot();
+      for (const id of [...selectedLayerIds]) removeLayer(id);
+    }
+  };
+
   const layerListRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ layerId: number } | null>(null);
   const dragItemsCache = useRef<{ id: number; el: HTMLElement; top: number; bottom: number; midY: number }[]>([]);
@@ -59,61 +95,28 @@ export const LeftPanel = forwardRef<HTMLDivElement>(function LeftPanel(_props, r
     createLayer("", 20 + offset, 20 + offset, 250, 120);
   };
 
-  // ── 섹션 리사이즈 드래그 ──
-  // 리사이즈 핸들은 위 섹션과 아래 섹션을 연동: 위를 늘리면 아래가 줄어듦
-  const MIN_HEIGHT = 60;
-  type SectionKey = "layers" | "palette" | "library";
-  const sectionResizeRef = useRef<{
-    upperKey: SectionKey;
-    lowerKey: SectionKey;
-    startY: number;
-    startUpperH: number;
-    startLowerH: number;
-  } | null>(null);
-
-  useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      if (!sectionResizeRef.current) return;
-      const { upperKey, lowerKey, startY, startUpperH, startLowerH } = sectionResizeRef.current;
-      const dy = e.clientY - startY;
-      const total = startUpperH + startLowerH;
-
-      let upperH = startUpperH + dy;
-      let lowerH = total - upperH;
-
-      // 클램프
-      if (upperH < MIN_HEIGHT) { upperH = MIN_HEIGHT; lowerH = total - upperH; }
-      if (lowerH < MIN_HEIGHT) { lowerH = MIN_HEIGHT; upperH = total - lowerH; }
-
-      setSectionHeights((prev) => ({ ...prev, [upperKey]: upperH, [lowerKey]: lowerH }));
-    };
-    const onUp = () => {
-      if (sectionResizeRef.current) {
-        sectionResizeRef.current = null;
-        setSectionHeights((cur) => {
-          useConfigStore.getState().updateConfig({ sectionHeights: cur });
-          return cur;
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const addImageLayer = () => imageInputRef.current?.click();
+  const handleImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const src = ev.target?.result as string;
+      const img = new window.Image();
+      img.onload = () => {
+        const offset = layers.length * 30;
+        createLayer("", 20 + offset, 20 + offset, img.naturalWidth, img.naturalHeight, {
+          type: "image",
+          imageSrc: src,
         });
-      }
+      };
+      img.src = src;
     };
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup", onUp);
-    return () => {
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onUp);
-    };
-  }, []);
-
-  const startSectionResize = (upperKey: SectionKey, lowerKey: SectionKey) => (e: React.MouseEvent) => {
-    e.preventDefault();
-    sectionResizeRef.current = {
-      upperKey,
-      lowerKey,
-      startY: e.clientY,
-      startUpperH: sectionHeights[upperKey],
-      startLowerH: sectionHeights[lowerKey],
-    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
   };
+
 
   // ── 레이어 드래그 정렬 ──
   useEffect(() => {
@@ -218,24 +221,25 @@ export const LeftPanel = forwardRef<HTMLDivElement>(function LeftPanel(_props, r
   return (
     <div className={styles.leftPanel} ref={ref}>
       {/* 레이어 섹션 */}
-      <div
-        className={`${styles.section} ${sectionsCollapsed.layers ? styles.collapsed : ""}`}
-        style={sectionsCollapsed.layers ? undefined : { flex: 1 }}
-      >
+      <div className={`${styles.section} ${styles.flexSection} ${sectionsCollapsed.layers ? styles.collapsed : ""}`}>
         <div className={styles.sectionHeader} onClick={() => toggleSection("layers")}>
           <div className={styles.sectionTitle}>
             <ChevronDown size={12} className={styles.toggle} />
             <span>{t("layer.title")}</span>
           </div>
           <div className={styles.sectionActions} onClick={(e) => e.stopPropagation()}>
-            <button className={styles.layerHeaderBtn} title={t("layer.addImage")}><Image size={11} /></button>
+            <button className={styles.layerHeaderBtn} onClick={addTextLayer} title={t("layer.addText")}><Plus size={11} /></button>
+            <button className={styles.layerHeaderBtn} onClick={addImageLayer} title={t("layer.addImage")}><Image size={11} /></button>
+            <input ref={imageInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleImageFile} />
             <button className={styles.layerHeaderBtn} onClick={toggleAllLocked} title={allLocked ? t("layer.unlock") : t("layer.lock")}>
               {allLocked ? <Lock size={11} /> : <Unlock size={11} />}
             </button>
             <button className={styles.layerHeaderBtn} onClick={toggleAllVisible} title={noneVisible ? t("layer.visible") : t("layer.hidden")}>
               {noneVisible ? <EyeOff size={11} /> : <Eye size={11} />}
             </button>
-            <button className={styles.layerHeaderBtn} onClick={addTextLayer} title={t("layer.addText")}><Plus size={11} /></button>
+            <div className={styles.layerMenuBtn} ref={layerMenuBtnRef} onMouseDown={handleLayerMenu}>
+              <MoreVertical size={11} />
+            </div>
           </div>
         </div>
         <div className={styles.sectionBody}>
@@ -245,52 +249,44 @@ export const LeftPanel = forwardRef<HTMLDivElement>(function LeftPanel(_props, r
             ))}
           </div>
         </div>
+
+        {layerMenuOpen && (
+          <div ref={layerMenuRef} className={styles.layerMenu} style={{ left: layerMenuPos.left, top: layerMenuPos.top }}>
+            {selectedLayerIds.size > 0 && (
+              <div className={styles.layerMenuItem} onClick={handleDeleteSelectedLayers} style={{ color: "#f44" }}>
+                {t("layer.deleteSelected")} ({selectedLayerIds.size})
+              </div>
+            )}
+            {selectedLayerIds.size === 0 && (
+              <div className={styles.layerMenuDisabled}>{t("layer.noSelection")}</div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* 하단 블록 리사이즈 핸들 */}
-      <div className={styles.sectionResize} onMouseDown={startSectionResize("layers", "palette")} />
-
-      {/* 하단 블록: 팔레트 + 라이브러리 */}
-      <div className={styles.bottomBlock} style={
-        sectionsCollapsed.palette && sectionsCollapsed.library
-          ? undefined
-          : { height: sectionHeights.palette + sectionHeights.library }
-      }>
-        {/* 팔레트 섹션 — flex:1로 라이브러리가 접히면 늘어남 */}
-        <div
-          className={`${styles.section} ${sectionsCollapsed.palette ? styles.collapsed : ""}`}
-          style={sectionsCollapsed.palette ? undefined : { flex: 1 }}
-        >
-          <div className={styles.sectionHeader} onClick={() => toggleSection("palette")}>
-            <div className={styles.sectionTitle}>
-              <ChevronDown size={12} className={styles.toggle} />
-              <span>{t("palette.title")}</span>
-            </div>
-          </div>
-          <div className={styles.sectionBody}>
-            <PaletteSection />
+      {/* 팔레트 섹션 */}
+      <div className={`${styles.section} ${styles.flexSection} ${sectionsCollapsed.palette ? styles.collapsed : ""}`}>
+        <div className={styles.sectionHeader} onClick={() => toggleSection("palette")}>
+          <div className={styles.sectionTitle}>
+            <ChevronDown size={12} className={styles.toggle} />
+            <span>{t("palette.title")}</span>
           </div>
         </div>
+        <div className={styles.sectionBody}>
+          <PaletteSection />
+        </div>
+      </div>
 
-        {/* 라이브러리 리사이즈 핸들 */}
-        {!sectionsCollapsed.palette && !sectionsCollapsed.library && (
-          <div className={styles.sectionResize} onMouseDown={startSectionResize("palette", "library")} />
-        )}
-
-        {/* 라이브러리(MLT) 섹션 */}
-        <div
-          className={`${styles.section} ${sectionsCollapsed.library ? styles.collapsed : ""}`}
-          style={sectionsCollapsed.library ? undefined : { height: sectionHeights.library }}
-        >
-          <div className={styles.sectionHeader} onClick={() => toggleSection("library")}>
-            <div className={styles.sectionTitle}>
-              <ChevronDown size={12} className={styles.toggle} />
-              <span>{t("mlt.title")}</span>
-            </div>
+      {/* 라이브러리(MLT) 섹션 */}
+      <div className={`${styles.section} ${styles.flexSection} ${sectionsCollapsed.library ? styles.collapsed : ""}`}>
+        <div className={styles.sectionHeader} onClick={() => toggleSection("library")}>
+          <div className={styles.sectionTitle}>
+            <ChevronDown size={12} className={styles.toggle} />
+            <span>{t("mlt.title")}</span>
           </div>
-          <div className={styles.sectionBody}>
-            <MltSection />
-          </div>
+        </div>
+        <div className={styles.sectionBody}>
+          <MltSection />
         </div>
       </div>
     </div>
