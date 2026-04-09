@@ -64,7 +64,30 @@ jobs:
             ## Downloads
             - **macOS (Apple Silicon)**: `.dmg` (aarch64)
             - **macOS (Intel)**: `.dmg` (x86_64)
-            - **Windows**: `.msi` / `.exe`
+            - **Windows**: `.msi` / `.exe` (설치파일)
+            - **Windows (Portable)**: `.zip` (설치 불필요, WebView2 런타임 필요)
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
+
+      - name: Create Windows Portable ZIP
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          $exePath = "src-tauri/target/release/KawAAi.exe"
+          if (Test-Path $exePath) {
+            $version = "${{ github.ref_name }}"
+            $zipName = "KawAAi_${version}_x64_portable.zip"
+            Compress-Archive -Path $exePath -DestinationPath $zipName
+            Write-Output "ZIP_PATH=$zipName" >> $env:GITHUB_OUTPUT
+            Write-Output "Created portable ZIP: $zipName"
+          }
+        id: portable
+
+      - name: Upload Portable ZIP to Release
+        if: matrix.platform == 'windows-latest' && steps.portable.outputs.ZIP_PATH
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.portable.outputs.ZIP_PATH }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

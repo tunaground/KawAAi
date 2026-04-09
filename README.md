@@ -140,19 +140,24 @@
 
 [Releases](https://github.com/tunaground/KawAAi/releases) 페이지에서 최신 버전을 다운로드하세요.
 
-| 플랫폼 | 파일 |
-|--------|------|
-| macOS (Apple Silicon) | `KawAAi_x.x.x_aarch64.dmg` |
-| macOS (Intel) | `KawAAi_x.x.x_x64.dmg` |
-| Windows | `KawAAi_x.x.x_x64.msi` |
+| 플랫폼 | 파일 | 설명 |
+|--------|------|------|
+| macOS (Apple Silicon) | `KawAAi_x.x.x_aarch64.dmg` | 설치 파일 |
+| macOS (Intel) | `KawAAi_x.x.x_x64.dmg` | 설치 파일 |
+| Windows | `KawAAi_x.x.x_x64.msi` / `.exe` | 설치 파일 |
+| Windows (Portable) | `KawAAi_x.x.x_x64_portable.zip` | 설치 불필요 |
 
 ### macOS
 1. `.dmg` 파일을 열고 KawAAi를 Applications 폴더에 드래그
 2. 처음 실행 시 "확인되지 않은 개발자" 경고가 뜨면: 시스템 설정 → 개인정보 보호 및 보안 → "확인 없이 열기" 클릭
 
 ### Windows
-1. `.msi` 파일 실행
-2. 설치 마법사 안내를 따라 설치
+1. `.msi` 또는 `.exe` 파일 실행하여 설치
+
+### Windows (Portable)
+1. `.zip` 파일을 원하는 위치에 압축 해제
+2. `KawAAi.exe` 실행
+3. [WebView2 런타임](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) 필요 (Windows 10 2018년 이후 / Windows 11은 기본 탑재)
 
 ## 기술 스택
 
